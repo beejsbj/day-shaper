@@ -1,0 +1,76 @@
+/* ============================================================
+   Day Shaper — design tokens (source of truth)
+   Taxonomy tier 1 of 5: tokens → primitives → unique specimens
+   → compounds → compositions.
+   The app (index.html) inlines these values for offline single-
+   file integrity; any change here must be mirrored there.
+   ============================================================ */
+
+:root{
+  /* ---- sky: four phases, crossfaded live by real sunrise/sunset ----
+     Each phase is a 3-stop vertical gradient: a (zenith) → b (mid) → c (horizon). */
+  --sky-day-a:#b9cfe4;   --sky-day-b:#cfdcec;   --sky-day-c:#eaf1f7;
+  --sky-dawn-a:#c3d2e6;  --sky-dawn-b:#dcdcd8;  --sky-dawn-c:#f0d6ba;
+  --sky-dusk-a:#8a97be;  --sky-dusk-b:#a68ba2;  --sky-dusk-c:#dcae86;
+  --sky-night-a:#0e1430; --sky-night-b:#1a2148; --sky-night-c:#2a3260;
+
+  /* ---- ink: text/line color, flipped by sky luminance (threshold 0.45) ---- */
+  --ink:#4a6486;                       /* slate blue on light skies   */
+  --ink-dark-sky:#e8edf8;              /* porcelain on dark skies     */
+  --dim:rgba(74,100,134,.55);
+  --dim-dark-sky:rgba(232,237,248,.55);
+
+  /* ---- celestial accents ---- */
+  --sun:#f7c95c;                       /* flat warm sun disc          */
+  --moon:#f5d78a;                      /* honey crescent              */
+
+  /* ---- block pastels: c0 = body, c1 = shaded edge ---- */
+  --block-sleep-0:#9fadde; --block-sleep-1:#7080c0;
+  --block-work-0:#f2b98c;  --block-work-1:#dd9260;
+  --block-eat-0:#f2d288;   --block-eat-1:#ddb058;
+  --block-move-0:#9cd2b2;  --block-move-1:#6cae8a;
+  --block-rest-0:#e5a9c2;  --block-rest-1:#c67f9e;
+
+  /* ---- surfaces: soft matte (no glassmorphism — no blur, near-opaque) ---- */
+  --surface:rgba(255,255,255,.75);          /* pill on light skies     */
+  --surface-dark-sky:rgba(46,56,104,.92);   /* pill on dark skies      */
+  --surface-deep:#54679a;                   /* readout scrim, light    */
+  --surface-deep-dark-sky:#2b3462;          /* readout scrim, dark     */
+  --ring:rgba(255,255,255,.5);
+  --ring-day:rgba(255,248,228,.72);
+  --ring-night:rgba(88,106,158,.38);
+  --ring-lip:rgba(255,255,255,.6);
+
+  /* ---- orb: the volumetric heart (radial, highlight at 38% 28%) ---- */
+  --orb-hi:#ffffff;  --orb-mid:#eef3f9;  --orb-lo:#ccd9e9;
+  --orb-n-hi:#3d477f; --orb-n-mid:#28315f; --orb-n-lo:#171d42;
+
+  /* ---- feedback ---- */
+  --lift-glow:rgba(255,236,180,.6);
+  --delete-red:#e07856;
+
+  /* ---- elevation ---- */
+  --shadow:rgba(90,110,150,.28);
+  --shadow-dark-sky:rgba(4,8,24,.45);
+  --shadow-float:0 6px 16px var(--shadow);
+  --shadow-orb:0 18px 30px var(--shadow);
+
+  /* ---- shape ---- */
+  --radius-pill:22px;
+  --radius-scrim:20px;
+  --radius-orb:50%;
+
+  /* ---- type: SF-light system stack; weight carries hierarchy, not size alone ---- */
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif;
+  --type-hero:200 42px var(--font);      /* hub time                  */
+  --type-title:300 26px var(--font);     /* greeting                  */
+  --type-body:300 12px var(--font);      /* dateline, hints           */
+  --type-label:500 10px var(--font);     /* uppercase, .32em tracking */
+  --type-micro:400 10.5px var(--font);   /* hub stats, .14em tracking */
+
+  /* ---- motion ---- */
+  --ease-springy:cubic-bezier(.34,1.6,.5,1);
+  --dur-sky:1.2s;                        /* ambient crossfades        */
+  --dur-touch:.22s;                      /* press/lift feedback       */
+  --dur-settle:650ms;                    /* now-on-top rotation       */
+}
