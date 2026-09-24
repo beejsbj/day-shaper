@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Day Shaper · Washi</title>
+<meta name="description" content="Tape up a what-if day on a printed almanac dial.">
+<meta name="theme-color" content="#efe6d4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Day Shaper">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23efe6d4'/%3E%3Ccircle cx='32' cy='32' r='19' fill='none' stroke='%23ff48b0' stroke-width='10' stroke-dasharray='40 80' style='mix-blend-mode:multiply'/%3E%3Ccircle cx='32' cy='32' r='19' fill='none' stroke='%23ff6c2f' stroke-width='10' stroke-dasharray='30 90' stroke-dashoffset='-50'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%2323242f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..600,0..100;1,9..144,300..600,0..100&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     WASHI — the day as tape on a printed almanac.
+     Paper stock, riso inks (multiply overprint, slight misregistration),
+     washi-tape sections with torn ends, Dymo-label readouts.
+     Stock flips to midnight paper after sunset; inks stay.
+     ============================================================ */
+  :root{
+    --paper:#efe6d4;  --card:#f8f2e7;  --card-edge:#e2d6c0;
+    --ink:#23242f;    --ink-2:rgba(35,36,47,.58); --ink-3:rgba(35,36,47,.26); --ink-4:rgba(35,36,47,.1);
+    --red:#f15060; --blue:#0078bf; --yellow:#ffe800; --pink:#ff48b0;
+    --orange:#ff6c2f; --green:#00a95c; --purple:#765ba7; --sunflower:#ffb511;
+    --core:#d8c29a;
+    --tape-blend:multiply; --tape-o:.9;
+    --serif:"Fraunces","Iowan Old Style","Palatino",Georgia,serif;
+    --mono:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --spring:cubic-bezier(.3,1.5,.45,1);
+  }
+  body.night{
+    --paper:#141828;  --card:#1d2236;  --card-edge:#2a3048;
+    --ink:#f0e7d4;    --ink-2:rgba(240,231,212,.62); --ink-3:rgba(240,231,212,.26); --ink-4:rgba(240,231,212,.08);
+    --core:#8d7a5a;
+    --tape-blend:normal; --tape-o:.93;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
+  body{position:fixed;inset:0;background:var(--paper);color:var(--ink);font-family:var(--mono);
+    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+    transition:background-color .9s ease, color .9s ease;}
+  button{font:inherit;color:inherit;}
+
+  /* the printed sky: a canvas of halftone dots in three inks */
+  #sky{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+  /* paper tooth over everything */
+  #grain{position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.34;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45  0 0 0 0 .38  0 0 0 0 .3  0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");}
+  body.night #grain{mix-blend-mode:screen;opacity:.1;}
+  /* crop + registration marks: this is a printed sheet */
+  .mark{position:fixed;z-index:1;width:22px;height:22px;pointer-events:none;opacity:.5;color:var(--ink);}
+  .mark.tl{top:calc(6px + env(safe-area-inset-top));left:6px;}
+  .mark.br{bottom:calc(6px + env(safe-area-inset-bottom));right:6px;transform:rotate(180deg);}
+  .mark svg{width:100%;height:100%;}
+
+  #stage{position:fixed;inset:0;z-index:2;display:flex;flex-direction:column;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
+
+  /* ---- masthead ---- */
+  #mast{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:20px 20px 0 24px;flex:0 0 auto;}
+  .kicker{font:500 8.5px/1 var(--mono);letter-spacing:.24em;text-transform:uppercase;color:var(--ink-2);}
+  .kicker b{color:var(--red);font-weight:500;}
+  #dayname{font:italic 300 44px/.92 var(--serif);font-variation-settings:"opsz" 144,"SOFT" 100;
+    letter-spacing:-.025em;margin-top:8px;}
+  #dateline{font:400 9.5px/1.55 var(--mono);color:var(--ink-2);margin-top:7px;letter-spacing:.03em;}
+  #dateline i{font:italic 400 12px var(--serif);color:var(--ink);letter-spacing:0;}
+
+  /* frame tabs: three stamped paper labels; the chosen one is inked */
+  #frames{display:flex;flex-direction:column;align-items:flex-end;gap:5px;margin-top:2px;}
+  #frames button{display:flex;align-items:center;gap:6px;border:1px solid var(--ink-3);background:var(--card);
+    padding:5px 8px 4px;border-radius:2px;cursor:pointer;
+    font:500 8.5px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2);
+    transition:transform .35s var(--spring), background-color .2s, color .2s, border-color .2s;}
+  #frames button svg{width:11px;height:11px;flex:0 0 auto;}
+  #frames button.on{background:var(--ink);color:var(--paper);border-color:var(--ink);transform:rotate(-2.5deg) translateX(-3px);}
+
+  /* ---- dial ---- */
+  #dialWrap{flex:1 1 auto;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;padding:4px 0;}
+  svg#dial{display:block;width:100%;height:100%;overflow:visible;}
+
+  /* Dymo readout, pressed across the hub */
+  #readout{position:absolute;left:50%;top:50%;z-index:10;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:4px;
+    opacity:0;transform:translate(-50%,-50%) rotate(-3deg) scale(.9);transition:opacity .14s ease, transform .3s var(--spring);}
+  #readout.show{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1);}
+  .dymo{background:#16161b;color:#f6f6f2;border-radius:2.5px;white-space:nowrap;text-transform:uppercase;
+    font:500 15px/1 var(--mono);letter-spacing:.14em;padding:8px 11px 7px;
+    text-shadow:0 1px 0 rgba(255,255,255,.3), 0 -1px 0 rgba(0,0,0,.9);
+    background-image:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,0) 40%,rgba(0,0,0,.18));
+    box-shadow:0 1px 0 rgba(255,255,255,.12) inset, 0 3px 0 -1px rgba(0,0,0,.35), 0 10px 18px -6px rgba(0,0,0,.45);}
+  .dymo.sub{font-size:8.5px;letter-spacing:.16em;padding:5px 8px 4px;transform:rotate(4deg) translateX(8px);}
+  #readout.danger .dymo{background-color:#c8102e;}
+  #dialWrap.reading #hubText{opacity:0;}
+  #readout.aside{top:var(--ry,50%);}
+  #dialWrap.reading.aside #hubText{opacity:1;}
+
+  /* ---- ledger: the day flattened to one strip of tape ---- */
+  #ledger{flex:0 0 auto;margin:0 16px calc(10px + env(safe-area-inset-bottom));padding:10px 14px 8px;
+    background:var(--card);border-radius:2px;transform:rotate(-.7deg);
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 12px 26px -12px rgba(58,42,20,.35), 0 2px 5px rgba(58,42,20,.12);}
+  body.night #ledger{box-shadow:0 14px 30px -12px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.35);}
+  #strip{display:block;width:100%;height:38px;overflow:visible;}
+  .sums{display:flex;justify-content:space-between;align-items:baseline;margin-top:6px;
+    font:500 8.5px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2);}
+  .sums em{font:italic 400 15px var(--serif);letter-spacing:0;color:var(--ink);text-transform:none;margin-right:4px;}
+  .sums .low em{color:var(--red);}
+  #hint{text-align:center;padding-top:7px;margin-top:7px;border-top:1px dashed var(--ink-3);
+    font:400 8px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;}
+
+  /* ---- picker: tape rolls roll out of the section ---- */
+  #picker{position:fixed;inset:0;z-index:50;display:none;}
+  #picker.live{display:block;}
+  #picker .scrim{position:absolute;inset:0;background:var(--paper);opacity:0;transition:opacity .25s ease;}
+  #picker.open .scrim{opacity:.42;}
+  .roll{position:absolute;width:56px;height:56px;margin:-28px 0 0 -28px;border:0;background:none;padding:0;cursor:pointer;
+    opacity:0;transform:translate(var(--fx),var(--fy)) rotate(-320deg) scale(.2);
+    transition:transform .6s cubic-bezier(.22,1.3,.4,1) var(--d), opacity .18s ease var(--d);}
+  #picker.open .roll{opacity:1;transform:none;}
+  .roll svg{width:100%;height:100%;overflow:visible;display:block;transition:transform .18s var(--spring);}
+  .roll:active svg{transform:scale(.88) rotate(-12deg);}
+  .roll .nm{position:absolute;top:100%;left:50%;margin-top:3px;transform:translateX(-50%) rotate(-3deg);
+    background:var(--card);color:var(--ink);border:1px solid var(--ink-3);padding:2px 4px 1px;white-space:nowrap;
+    font:500 7.5px/1.2 var(--mono);letter-spacing:.16em;text-transform:uppercase;pointer-events:none;}
+  .roll.cur .nm{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .roll.cut .nm{color:var(--red);border-color:var(--red);}
+
+  /* ---- a strip of tape peeled off and carried under the thumb ---- */
+  #carry{position:fixed;left:0;top:0;z-index:45;pointer-events:none;display:none;will-change:transform;}
+  #carry svg{display:block;overflow:visible;transition:transform .3s var(--spring), opacity .3s ease;
+    filter:drop-shadow(0 16px 14px rgba(40,28,14,.3)) drop-shadow(0 2px 3px rgba(40,28,14,.25));}
+  #carry.doomed svg{transform:scale(.6) rotate(18deg);}
+  #carry.binned svg{transform:scale(.08) rotate(260deg);opacity:0;transition:transform .38s cubic-bezier(.5,0,.8,.4), opacity .38s ease;}
+
+  #rotateHint{position:fixed;inset:0;z-index:100;display:none;background:var(--paper);align-items:center;justify-content:center;
+    text-align:center;padding:30px;font:italic 300 22px var(--serif);}
+  @media (orientation:landscape) and (max-height:500px){ #rotateHint{display:flex;} #stage{display:none;} }
+  @media (max-height:700px){
+    #mast{padding-top:12px;} #dayname{font-size:36px;margin-top:5px;} #dateline{margin-top:4px;}
+    #ledger{padding-top:8px;} #hint{margin-top:5px;padding-top:5px;}
+  }
+  @media (prefers-reduced-motion:reduce){ .roll{transition-duration:.01s !important;} }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<div class="mark tl"><svg viewBox="0 0 22 22"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="11" cy="11" r="5"/><path d="M11 1v20M1 11h20"/></g></svg></div>
+<div class="mark br"><svg viewBox="0 0 22 22"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="11" cy="11" r="5"/><path d="M11 1v20M1 11h20"/></g></svg></div>
+
+<div id="stage">
+  <header id="mast">
+    <div>
+      <div class="kicker">Day&nbsp;Shaper · almanac <b id="almNo">Nº —</b></div>
+      <h1 id="dayname">Today</h1>
+      <div id="dateline">—</div>
+    </div>
+    <nav id="frames" role="radiogroup" aria-label="Dial frame">
+      <button data-f="noon" role="radio" title="Noon on top"><svg viewBox="0 0 12 12"><circle cx="6" cy="3.2" r="2.2" fill="currentColor"/><path d="M1 10.5h10" stroke="currentColor" stroke-width="1.1"/></svg>Noon</button>
+      <button data-f="sun" role="radio" title="Sunrise left · sunset right"><svg viewBox="0 0 12 12"><path d="M1.5 8a4.5 4.5 0 0 1 9 0" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M.5 10.5h11" stroke="currentColor" stroke-width="1.1"/><circle cx="1.8" cy="8" r="1.3" fill="currentColor"/></svg>Sun</button>
+      <button data-f="now" role="radio" title="Now on top — the sky turns with you"><svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M6 6V1.4" stroke="currentColor" stroke-width="1.4"/></svg>Now</button>
+    </nav>
+  </header>
+
+  <div id="dialWrap">
+    <svg id="dial" viewBox="0 0 390 390" preserveAspectRatio="xMidYMid meet" aria-label="24-hour day dial">
+      <defs id="defs">
+        <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="10" stdDeviation="11" flood-color="#3a2a14" flood-opacity=".2"/>
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.2" flood-color="#3a2a14" flood-opacity=".16"/>
+        </filter>
+        <filter id="tapeShadow" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy=".8" stdDeviation=".7" flood-color="#3a2a14" flood-opacity=".22"/>
+        </filter>
+        <filter id="liftShadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#3a2a14" flood-opacity=".3"/>
+        </filter>
+        <!-- inked edges: a whisper of displacement so printed lines aren't vector-perfect -->
+        <filter id="inky" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="1.3"/>
+        </filter>
+      </defs>
+      <g id="gCard"></g>
+      <g id="gTrack"></g>
+      <g id="gTape"></g>
+      <g id="gSpent"></g>
+      <g id="gGhost"></g>
+      <g id="gLabels"></g>
+      <g id="gBodies"></g>
+      <g id="gNow"></g>
+      <g id="gHub"></g>
+      <g id="gRoll"></g>
+    </svg>
+    <div id="readout"><div class="dymo main">—</div><div class="dymo sub">—</div></div>
+  </div>
+
+  <section id="ledger" aria-label="The day as one strip">
+    <svg id="strip" viewBox="0 0 346 38"></svg>
+    <div class="sums"><span id="sumTaped"><em>—</em>taped</span><span id="sumBare"><em>—</em>bare</span></div>
+    <div id="hint">pull tape round the ring · tap to swap · hold to peel</div>
+  </section>
+</div>
+
+<div id="carry"></div>
+<div id="picker"><div class="scrim"></div></div>
+<div id="rotateHint">turn your phone upright — the day is taped in portrait</div>
+
+<script>
+"use strict";
+(function(){
+  const SVG="http://www.w3.org/2000/svg";
+  const $=(id)=>document.getElementById(id);
+  const dial=$("dial");
+
+  /* ---------------- geometry ---------------- */
+  const CX=195, CY=195, R=122, TAPE_W=36;          // R = centre line of the tape track
+  const R_IN=R-TAPE_W/2, R_OUT=R+TAPE_W/2;
+  const CARD_R=186, HUB_R=70, BODY_R=178;
+  const TAU=Math.PI*2;
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const SNAP=0.25, snap=(t)=>Math.round(t/SNAP)*SNAP;
+  function fmt(t){ t=((t%24)+24)%24; let h=Math.floor(t),m=Math.round((t-h)*60);
+    if(m===60){h++;m=0;} h%=24; return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"); }
+  function durText(len){ const mins=Math.round(len*60),h=Math.floor(mins/60),m=mins%60;
+    if(h&&m)return h+"h "+m+"m"; if(h)return h+"h"; return m+"m"; }
+
+  /* ---------------- solar ---------------- */
+  let LAT=30, LON=(-new Date().getTimezoneOffset()/60)*15;
+  let sun={sunrise:6.5,sunset:18.5,polar:null};
+  // ?at=21.5 pins the clock to a time of day (review/screenshots: see both paper stocks)
+  const AT=(()=>{ const v=new URLSearchParams(location.search).get("at"); return v!==null&&isFinite(+v)&&+v>=0&&+v<24 ? +v : null; })();
+  const nowHour=()=>{ if(AT!==null) return AT; const d=new Date(); return d.getHours()+d.getMinutes()/60+d.getSeconds()/3600; };
+  const dayOfYear=(d)=>Math.floor((d-new Date(d.getFullYear(),0,0))/864e5);
+  function computeSun(){
+    const d=new Date(),N=dayOfYear(d),rad=Math.PI/180,deg=180/Math.PI;
+    const decl=23.44*rad*Math.sin(rad*(360/365)*(N-81)), latR=LAT*rad;
+    const cosH=(Math.sin(-0.833*rad)-Math.sin(latR)*Math.sin(decl))/(Math.cos(latR)*Math.cos(decl));
+    let sr,ss;
+    if(cosH>1){sr=ss=12;sun.polar="night";}
+    else if(cosH<-1){sr=0;ss=24;sun.polar="day";}
+    else{
+      const H=Math.acos(cosH)*deg/15, B2=rad*(360/365)*(N-81);
+      const eot=9.87*Math.sin(2*B2)-7.53*Math.cos(B2)-1.5*Math.sin(B2);
+      const solarNoon=12-(LON/15)+(-d.getTimezoneOffset()/60)-eot/60;
+      sr=solarNoon-H; ss=solarNoon+H; sun.polar=null;
+    }
+    sun.sunrise=((sr%24)+24)%24; sun.sunset=((ss%24)+24)%24;
+    writeMasthead();
+  }
+  const isDayAt=(t)=> sun.polar==="day" || (sun.polar!=="night" &&
+    (sun.sunrise<sun.sunset ? (t>=sun.sunrise&&t<=sun.sunset) : (t>=sun.sunrise||t<=sun.sunset)));
+
+  /* ---------------- frames (same seam as the clay build) ----------------
+     A frame is a monotone map hour -> angle (0 = top, clockwise), rising 2PI
+     over the day. noon: uniform, noon up. sun: WARPED so sunrise is exactly
+     left and sunset exactly right. now: uniform, now up — sky turns too. */
+  const FRAMES=["noon","sun","now"];
+  let NOW=nowHour();
+  function frameTheta(f,t){
+    if(f==="now") return ((t-NOW)/24)*TAU;
+    if(f==="sun"){
+      const sr=sun.sunrise, D=((sun.sunset-sun.sunrise)%24+24)%24;
+      if(sun.polar || D<1 || D>23) return frameTheta("noon",t);
+      const u=t>=sr ? t-sr : t-sr+24;
+      const th=u<D ? -Math.PI/2+(u/D)*Math.PI : Math.PI/2+((u-D)/(24-D))*Math.PI;
+      return t<sr ? th-TAU : th;
+    }
+    return ((t+12)/24)*TAU;
+  }
+  let frame="noon", frameFrom="noon", frameK=1;
+  function hourToTheta(t){
+    const b=frameTheta(frame,t);
+    if(frameK>=1) return b;
+    const off=Math.round((frameTheta(frame,0)-frameTheta(frameFrom,0))/TAU)*TAU;
+    const a=frameTheta(frameFrom,t)+off;
+    return a+(b-a)*frameK;
+  }
+  function thetaToHour(th){
+    const base=hourToTheta(0), target=base+(((th-base)%TAU)+TAU)%TAU;
+    let lo=0,hi=24;
+    for(let i=0;i<30;i++){ const m=(lo+hi)/2; if(hourToTheta(m)<target) lo=m; else hi=m; }
+    return ((lo+hi)/2)%24;
+  }
+  const polar=(th,r)=>({x:CX+r*Math.sin(th), y:CY-r*Math.cos(th)});
+  const ptAt=(t,r=R)=>polar(hourToTheta(t),r);
+  const ptToHour=(x,y)=>thetaToHour(Math.atan2(x-CX,-(y-CY)));
+  const ringDist=(x,y)=>Math.hypot(x-CX,y-CY)/R;
+  const thetaUnwrapped=(h)=>{ const k=Math.floor(h/24); return hourToTheta(h-24*k)+TAU*k; };
+
+  /* ---------------- tapes: the palette ---------------- */
+  const PALETTE=[
+    {id:"sleep",name:"Sleep",color:"#765ba7",ink:"#fff",pattern:"moons"},
+    {id:"work", name:"Work", color:"#ff6c2f",ink:"#fff",pattern:"grid"},
+    {id:"eat",  name:"Eat",  color:"#ffb511",ink:"#3b2600",pattern:"gingham"},
+    {id:"move", name:"Move", color:"#00a95c",ink:"#fff",pattern:"stripes"},
+    {id:"rest", name:"Rest", color:"#ff48b0",ink:"#fff",pattern:"dots"},
+  ];
+  // hand-cut glyphs, 24-unit box; f = filled, otherwise stroked
+  const ICON={
+    sleep:{f:1,d:"M15.2 3.2a8.8 8.8 0 1 0 5.6 15.2A7.2 7.2 0 0 1 15.2 3.2z"},
+    work:{d:"M4.5 19.5l1.1-4.4L16.2 4.5l3.3 3.3L8.9 18.4zM13.8 6.9l3.3 3.3"},
+    eat:{d:"M5.5 3v5.5a2.5 2.5 0 0 0 5 0V3M8 3v18M16.5 3c-2 0-3 2.6-3 5.2 0 2 1.2 3.3 3 3.3s3-1.3 3-3.3C19.5 5.6 18.5 3 16.5 3zM16.5 11.5V21"},
+    move:{f:1,d:"M13.6 2.4L5 13.8h5.8l-1.4 7.8 9.6-11.9h-5.9z"},
+    rest:{d:"M4 9.5h12v4a5.5 5.5 0 0 1-5.5 5.5h-1A5.5 5.5 0 0 1 4 13.5zM16 11h1.6a2.4 2.4 0 0 1 0 4.8H16M8.2 3.6c-.8 1.1.8 1.9 0 3.1M12 3.6c-.8 1.1.8 1.9 0 3.1"},
+    cut:{d:"M9.2 8.8L20 18M9.2 15.2L20 6M7 6.5a2.6 2.6 0 1 1-5.2 0a2.6 2.6 0 1 1 5.2 0zM7 17.5a2.6 2.6 0 1 1-5.2 0a2.6 2.6 0 1 1 5.2 0z"},
+  };
+  const typeOf=(id)=>PALETTE.find(p=>p.id===id)||PALETTE[0];
+
+  /* ---------------- state (shared storage with the clay build: same day, two skins) ---------------- */
+  const LS_BLOCKS="dayshaper.clay.blocks.v2", LS_FRAME="dayshaper.clay.frame.v1", LS_LASTTYPE="dayshaper.clay.lasttype.v1";
+  const load=(k,fb)=>{ try{const v=JSON.parse(localStorage.getItem(k));return v==null?fb:v;}catch(e){return fb;} };
+  const uid=()=>Math.random().toString(36).slice(2,9);
+  function seedBlocks(){ return [
+    {id:uid(),type:"sleep",start:0,len:6.5},{id:uid(),type:"work",start:9,len:4},
+    {id:uid(),type:"eat",start:13,len:0.75},{id:uid(),type:"move",start:17.5,len:1},
+    {id:uid(),type:"rest",start:20,len:1.5},
+  ]; }
+  function sanitizeBlocks(list){
+    if(!Array.isArray(list)) return seedBlocks();
+    const ids=new Set(), out=[];
+    for(const raw of list){
+      if(!raw||typeof raw!=="object") continue;
+      const start=Number(raw.start), len=Number(raw.len);
+      if(!Number.isFinite(start)||!Number.isFinite(len)||len<=0||start<0||start+len>24) continue;
+      if(!PALETTE.find(p=>p.id===raw.type)) continue;
+      const id=(typeof raw.id==="string"&&raw.id&&!ids.has(raw.id))?raw.id:uid(); ids.add(id);
+      out.push({id,type:raw.type,start,len});
+    }
+    out.sort((a,b)=>a.start-b.start);
+    while(out.length&&out.reduce((s,b)=>s+b.len,0)>24) out.pop();
+    if(out.length) resolve(out,0,out[0].start);
+    return out;
+  }
+  let blocks=sanitizeBlocks(load(LS_BLOCKS,seedBlocks()));
+  { const f=load(LS_FRAME,null); frame=frameFrom=FRAMES.includes(f)?f:"noon"; }
+  let lastType=load(LS_LASTTYPE,"work"); if(!PALETTE.find(p=>p.id===lastType)) lastType="work";
+  function save(){
+    localStorage.setItem(LS_BLOCKS,JSON.stringify(blocks.map(b=>({id:b.id,type:b.type,start:b.start,len:b.len}))));
+    localStorage.setItem(LS_FRAME,JSON.stringify(frame));
+    localStorage.setItem(LS_LASTTYPE,JSON.stringify(lastType));
+  }
+  const sortBlocks=()=>blocks.sort((a,b)=>a.start-b.start);
+  const byId=(id)=>blocks.find(x=>x.id===id);
+  const freeHours=()=>Math.max(0,24-blocks.reduce((s,b)=>s+b.len,0));
+
+  /* ---------------- CASCADE ENGINE (unchanged from clay) ----------------
+     resolve() is the only thing that moves block.start. Blocks sorted, sum(len)<=24.
+     originMap supplies pre-gesture starts so neighbours fill gaps before being pushed. */
+  function resolve(list,i,desiredStart,originMap){
+    const n=list.length; if(!n) return;
+    let sumBefore=0; for(let k=0;k<i;k++) sumBefore+=list[k].len;
+    let sumFromI=0; for(let k=i;k<n;k++) sumFromI+=list[k].len;
+    const minStart=sumBefore, maxStart=24-sumFromI;
+    let s=snap(clamp(desiredStart,minStart,maxStart));
+    list[i].start=clamp(s,minStart,maxStart);
+    for(let k=i+1;k<n;k++){
+      const o=originMap?originMap.get(list[k].id):undefined;
+      list[k].start=Math.max(o===undefined?list[k].start:o, list[k-1].start+list[k-1].len);
+    }
+    for(let k=i-1;k>=0;k--){
+      const o=originMap?originMap.get(list[k].id):undefined;
+      list[k].start=Math.min(o===undefined?list[k].start:o, list[k+1].start-list[k].len);
+    }
+    list[0].start=Math.max(0,list[0].start);
+    for(let k=1;k<n;k++) list[k].start=Math.max(list[k].start,list[k-1].start+list[k-1].len);
+    const last=list[n-1];
+    if(last.start+last.len>24){
+      const over=last.start+last.len-24;
+      for(let k=n-1;k>=0;k--) list[k].start-=over;
+      list[0].start=Math.max(0,list[0].start);
+      for(let k=1;k<n;k++) list[k].start=Math.max(list[k].start,list[k-1].start+list[k-1].len);
+    }
+  }
+
+  /* ---------------- svg helpers ---------------- */
+  const el=(tag,a,style)=>{ const e=document.createElementNS(SVG,tag);
+    for(const k in a) e.setAttribute(k,a[k]); if(style) Object.assign(e.style,style); return e; };
+  const clear=(g)=>{ while(g.firstChild) g.removeChild(g.firstChild); };
+  const f1=(n)=>n.toFixed(1);
+  // seeded noise so each strip keeps its own torn edge across renders
+  const hash=(s)=>{ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; };
+  const rnd=(seed,i)=>{ let x=(seed+i*374761393)>>>0; x=Math.imul(x^(x>>>13),1274126177); x^=x>>>16; return (x>>>0)/4294967296; };
+
+  // an arc along radius r from angle a to b (either direction), as SVG arc commands
+  function arcCmd(r,a,b){
+    const m=(a+b)/2, pm=polar(m,r), pb=polar(b,r), sw=b>a?1:0;
+    return "A"+r+" "+r+" 0 0 "+sw+" "+f1(pm.x)+" "+f1(pm.y)+"A"+r+" "+r+" 0 0 "+sw+" "+f1(pb.x)+" "+f1(pb.y);
+  }
+  // a torn edge running radially from rA to rB at angle th: an irregular zigzag
+  function tornPts(th,rA,rB,seed,amp){
+    const pts=[], N=8;
+    for(let i=1;i<=N;i++){
+      const r=rA+(rB-rA)*i/N;
+      const j= i===N ? 0 : ((i%2?1:-1)*(0.35+0.65*rnd(seed,i)))*amp;
+      pts.push(polar(th+j/r,r));
+    }
+    return pts.map(p=>"L"+f1(p.x)+" "+f1(p.y)).join("");
+  }
+  /* a strip of tape from hour t0 to t1: two arcs + two torn ends */
+  function tapePath(t0,t1,rIn,rOut,seed,ampA,ampB){
+    const a=hourToTheta(t0), b=hourToTheta(t1)+(t1<=t0?TAU:0), p0=polar(a,rOut);
+    return "M"+f1(p0.x)+" "+f1(p0.y)+arcCmd(rOut,a,b)+tornPts(b,rOut,rIn,seed,ampB)
+      +arcCmd(rIn,b,a)+tornPts(a,rIn,rOut,seed+99,ampA)+"Z";
+  }
+  function sector(t0,t1,rIn,rOut){
+    const a=hourToTheta(t0), b=hourToTheta(t1), p0=polar(a,rOut), p1=polar(b,rIn);
+    return "M"+f1(p0.x)+" "+f1(p0.y)+arcCmd(rOut,a,b)+"L"+f1(p1.x)+" "+f1(p1.y)+arcCmd(rIn,b,a)+"Z";
+  }
+  function iconEl(kind,x,y,size,color){
+    const ic=ICON[kind], s=size/24;
+    const g=el("g",{transform:"translate("+f1(x-size/2)+" "+f1(y-size/2)+") scale("+s.toFixed(3)+")"});
+    g.appendChild(el("path",{d:ic.d,fill:ic.f?color:"none",stroke:color,"stroke-width":ic.f?0.6:1.9,
+      "stroke-linecap":"round","stroke-linejoin":"round"}));
+    return g;
+  }
+
+  /* ---------------- patterns (one per tape, plus the spent-hours hatch) ---------------- */
+  function buildPatterns(){
+    const defs=$("defs");
+    for(const p of PALETTE){
+      const pat=el("pattern",{id:"pat_"+p.id,patternUnits:"userSpaceOnUse",width:12,height:12});
+      pat.appendChild(el("rect",{width:12,height:12,fill:p.color}));
+      const W="rgba(255,255,255,", add=(t,a)=>pat.appendChild(el(t,a));
+      if(p.pattern==="moons"){
+        add("circle",{cx:3.5,cy:3.5,r:1.9,fill:W+".75)"}); add("circle",{cx:4.3,cy:3,r:1.6,fill:p.color});
+        add("circle",{cx:9.5,cy:9.5,r:.7,fill:W+".6)"});
+      } else if(p.pattern==="grid"){
+        pat.setAttribute("width",7); pat.setAttribute("height",7);
+        add("path",{d:"M0 .3H7M.3 0V7",stroke:W+".5)","stroke-width":.6});
+      } else if(p.pattern==="gingham"){
+        add("rect",{x:0,y:0,width:6,height:12,fill:W+".28)"}); add("rect",{x:0,y:0,width:12,height:6,fill:W+".28)"});
+      } else if(p.pattern==="stripes"){
+        pat.setAttribute("width",7); pat.setAttribute("height",7); pat.setAttribute("patternTransform","rotate(45)");
+        add("rect",{x:0,y:0,width:2.6,height:7,fill:W+".36)"});
+      } else if(p.pattern==="dots"){
+        add("circle",{cx:3,cy:3,r:1.6,fill:W+".62)"}); add("circle",{cx:9,cy:9,r:1.6,fill:W+".62)"});
+      }
+      defs.appendChild(pat);
+    }
+    const h=el("pattern",{id:"hatch",patternUnits:"userSpaceOnUse",width:4.5,height:4.5,patternTransform:"rotate(-35)"});
+    h.appendChild(el("rect",{x:0,y:0,width:1,height:4.5},{fill:"var(--ink)"}));
+    defs.appendChild(h);
+  }
+
+  /* ---------------- render ---------------- */
+  const g=(id)=>$(id);
+  const gCard=g("gCard"),gTrack=g("gTrack"),gTape=g("gTape"),gSpent=g("gSpent"),gGhost=g("gGhost"),
+        gLabels=g("gLabels"),gBodies=g("gBodies"),gNow=g("gNow"),gHub=g("gHub"),gRoll=g("gRoll");
+
+  function drawCard(){
+    clear(gCard);
+    // the die-cut paper disc lying on the printed sheet
+    gCard.appendChild(el("circle",{cx:CX,cy:CY,r:CARD_R,filter:"url(#cardShadow)"},{fill:"var(--card)"}));
+    gCard.appendChild(el("circle",{cx:CX,cy:CY,r:CARD_R-.5,fill:"none","stroke-width":1},{stroke:"var(--card-edge)"}));
+  }
+
+  function drawTrack(){
+    clear(gTrack);
+    const ink={stroke:"var(--ink)"};
+    // bare track: hairline rails + a dotted centre line. Bare = unspent, so it's printed faint on purpose.
+    gTrack.appendChild(el("circle",{cx:CX,cy:CY,r:R_OUT,fill:"none","stroke-width":.6,opacity:.3},ink));
+    gTrack.appendChild(el("circle",{cx:CX,cy:CY,r:R_IN,fill:"none","stroke-width":.6,opacity:.3},ink));
+    gTrack.appendChild(el("circle",{cx:CX,cy:CY,r:R,fill:"none","stroke-width":1,"stroke-dasharray":"0.1 5.2",
+      "stroke-linecap":"round",opacity:.45},ink));
+    // almanac rim: a yellow bar for daylight, blue for night, printed just outside the track
+    const rimR=R_OUT+4.5;
+    if(sun.polar!=="night"){
+      const sr=sun.sunrise, ss=sun.sunset+(sun.sunset<sun.sunrise?24:0);
+      gTrack.appendChild(el("path",{d:sector(sr,ss,rimR-1.8,rimR+1.8),fill:"#ffe800"},{mixBlendMode:"var(--tape-blend)"}));
+    }
+    if(sun.polar!=="day"){
+      const ss=sun.sunset, sr=sun.sunrise+(sun.sunrise<sun.sunset?24:0);
+      gTrack.appendChild(el("path",{d:sector(ss,sr,rimR-1.8,rimR+1.8),fill:"#0078bf",opacity:.8},{mixBlendMode:"var(--tape-blend)"}));
+    }
+    // hour ticks + two-digit numerals every three hours
+    for(let h=0;h<24;h++){
+      const big=h%3===0, p1=ptAt(h,rimR+4), p2=ptAt(h,rimR+(big?10:7));
+      gTrack.appendChild(el("line",{x1:f1(p1.x),y1:f1(p1.y),x2:f1(p2.x),y2:f1(p2.y),"stroke-width":big?1.1:.6,
+        "stroke-linecap":"round",opacity:big?.7:.35},ink));
+      if(big){
+        const lp=ptAt(h,rimR+19);
+        const tx=el("text",{x:f1(lp.x),y:f1(lp.y),"text-anchor":"middle","dominant-baseline":"central"},
+          {font:(h%12===0?"500 ":"400 ")+"8.5px var(--mono)",letterSpacing:".06em",fill:"var(--ink)",opacity:h%6===0?.85:.5});
+        tx.textContent=String(h).padStart(2,"0"); gTrack.appendChild(tx);
+      }
+    }
+    // sunrise + sunset pips on the rim
+    if(!sun.polar){
+      for(const [t,c] of [[sun.sunrise,"#ff48b0"],[sun.sunset,"#ff6c2f"]]){
+        const p=ptAt(t,rimR); gTrack.appendChild(el("circle",{cx:f1(p.x),cy:f1(p.y),r:3.2,fill:c},{stroke:"var(--card)",strokeWidth:1.2}));
+      }
+    }
+  }
+
+  // springs: wobble (x) + lift (peel height) per strip
+  const springs={};
+  const spring=(id)=>springs[id]||(springs[id]={x:0,v:0,lift:0,liftTarget:0});
+  const bump=(id,amt=1)=>{ const sp=spring(id); sp.v=clamp(sp.v+amt*6,-16,16); kickRaf(); };
+  const setLift=(id,t)=>{ spring(id).liftTarget=t; kickRaf(); };
+
+  function drawTapes(){
+    clear(gTape); clear(gLabels);
+    const order=[...blocks].sort((a,b)=>spring(a.id).lift-spring(b.id).lift);
+    const defs=$("defs"); defs.querySelectorAll(".lp").forEach(n=>n.remove());
+    for(const b of order){
+      const ty=typeOf(b.type), sp=spring(b.id), seed=hash(b.id);
+      const wob=clamp(sp.x,-1.6,1.6)*1.3, lift=sp.lift*9;
+      const rIn=R_IN-wob*.5+lift, rOut=R_OUT+wob+lift;
+      const drawing = drag && drag.mode==="draw" && drag.newId===b.id;
+      // the leading end is still on the roll while drawing: a clean cut, not a tear
+      const ampA = drawing && drag.cur<drag.anchor ? 0 : 2.6;
+      const ampB = drawing && drag.cur>drag.anchor ? 0 : 2.6;
+      const d=tapePath(b.start,b.start+b.len,rIn,rOut,seed,ampA,ampB);
+      const grp=el("g",{filter:sp.lift>.05?"url(#liftShadow)":"url(#tapeShadow)"});
+      grp.appendChild(el("path",{d,fill:"url(#pat_"+b.type+")"},{mixBlendMode:"var(--tape-blend)",opacity:"var(--tape-o)"}));
+      // crinkle sheen: tape catches light in a soft band near its outer edge
+      grp.appendChild(el("path",{d:sector(b.start+.04,b.start+b.len-.04,rOut-9,rOut-4),fill:"#fff",opacity:.13+sp.lift*.12}));
+      gTape.appendChild(grp);
+
+      // label: glyph + name set along the curve, flipped upright on the lower half
+      const mid=b.start+b.len/2, thm=((hourToTheta(mid)%TAU)+TAU)%TAU;
+      const lower=thm>Math.PI/2 && thm<Math.PI*1.5;
+      const rl=(rIn+rOut)/2;
+      if(b.len>=1.75){
+        const a0=hourToTheta(b.start+.28), a1=hourToTheta(b.start+b.len-.12);
+        const ic=polar(a0,rl);
+        gLabels.appendChild(iconEl(b.type,ic.x,ic.y,13,ty.ink));
+        const id="lp_"+b.id, pa=hourToTheta(b.start+.62);
+        const pStart=polar(lower?a1:pa,rl);
+        const path=el("path",{id,class:"lp",d:"M"+f1(pStart.x)+" "+f1(pStart.y)+(lower?arcCmd(rl,a1,pa):arcCmd(rl,pa,a1))});
+        defs.appendChild(path);
+        const tx=el("text",{"dominant-baseline":"central"},{font:"500 8.5px var(--mono)",letterSpacing:".2em",fill:ty.ink});
+        const tp=el("textPath",{href:"#"+id}); tp.setAttributeNS("http://www.w3.org/1999/xlink","xlink:href","#"+id);
+        if(lower){ tp.setAttribute("startOffset","100%"); tp.setAttribute("text-anchor","end"); }
+        const room=Math.abs(a1-pa)*rl, full=ty.name.toUpperCase()+"  "+durText(b.len).replace(" ","");
+        const txt= full.length*6.6<=room ? full : ty.name.length*6.6<=room ? ty.name.toUpperCase() : "";
+        tp.textContent=txt;
+        tx.appendChild(tp); if(txt) gLabels.appendChild(tx);
+      } else if(b.len>=0.5){
+        const p=ptAt(mid,rl); gLabels.appendChild(iconEl(b.type,p.x,p.y,b.len>=1?13:10,ty.ink));
+      }
+    }
+  }
+
+  // hours already lived get a printed hatch laid over the tape
+  function drawSpent(){
+    clear(gSpent);
+    const t=NOW; if(t<.05) return;
+    gSpent.appendChild(el("path",{d:sector(0,t,R_IN-1,R_OUT+1),fill:"url(#hatch)",opacity:.22}));
+  }
+
+  function drawBodies(){
+    clear(gBodies);
+    const t=NOW, day=isDayAt(t), D=((sun.sunset-sun.sunrise)%24+24)%24;
+    const solarNoon=(sun.sunrise+D/2)%24, solarMid=(solarNoon+12)%24;
+    // sun stamp: riding the day at its true hour; parked faint at solar noon at night
+    const sp=ptAt(day?t:solarNoon,BODY_R), sg=el("g",{opacity:day?1:.28});
+    for(let i=0;i<10;i++){ const a=i/10*TAU, p1=polar(a,12.5), p2=polar(a,16.5);
+      sg.appendChild(el("line",{x1:f1(sp.x+p1.x-CX),y1:f1(sp.y+p1.y-CY),x2:f1(sp.x+p2.x-CX),y2:f1(sp.y+p2.y-CY),
+        stroke:"#ff6c2f","stroke-width":1.6,"stroke-linecap":"round"})); }
+    sg.appendChild(el("circle",{cx:f1(sp.x),cy:f1(sp.y),r:9.5,fill:"#ffe800"},{mixBlendMode:"var(--tape-blend)"}));
+    sg.appendChild(el("circle",{cx:f1(sp.x+1),cy:f1(sp.y-.8),r:9.5,fill:"none",stroke:"#ff6c2f","stroke-width":1}));
+    gBodies.appendChild(sg);
+    // moon stamp, printed in blue and knocked out with the card colour
+    const mp=ptAt(!day?t:solarMid,BODY_R), mg=el("g",{opacity:!day?1:.28});
+    mg.appendChild(el("circle",{cx:f1(mp.x),cy:f1(mp.y),r:9.5},{fill:"var(--moon-ink,#0078bf)"}));
+    mg.appendChild(el("circle",{cx:f1(mp.x+4.6),cy:f1(mp.y-3),r:8},{fill:"var(--card)"}));
+    gBodies.appendChild(mg);
+  }
+
+  function drawNow(){
+    clear(gNow);
+    const a=hourToTheta(NOW), p1=polar(a,R_IN-3), p2=polar(a,R_OUT+3);
+    gNow.appendChild(el("line",{x1:f1(p1.x),y1:f1(p1.y),x2:f1(p2.x),y2:f1(p2.y),stroke:"#f15060","stroke-width":1.6,"stroke-linecap":"round"}));
+    // a little printed pointer outside the rim
+    const tip=polar(a,R_OUT+5), l=polar(a-.035,R_OUT+13), r=polar(a+.035,R_OUT+13);
+    gNow.appendChild(el("path",{d:"M"+f1(tip.x)+" "+f1(tip.y)+"L"+f1(l.x)+" "+f1(l.y)+"L"+f1(r.x)+" "+f1(r.y)+"Z",fill:"#f15060"}));
+  }
+
+  function drawHub(){
+    clear(gHub);
+    const armed=drag&&drag.armDelete;
+    // a rubber-stamped seal: double ring, time in soft serif, what's left of the day beneath
+    gHub.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R},{fill:"var(--card)"}));
+    gHub.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R-3,fill:"none","stroke-width":armed?1.6:1.1,
+      "stroke-dasharray":armed?"5 4":"none",filter:"url(#inky)"},{stroke:armed?"#f15060":"var(--ink)",opacity:armed?1:.75}));
+    gHub.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R-7,fill:"none","stroke-width":.5},{stroke:"var(--ink)",opacity:.4}));
+    const txt=el("g",{id:"hubText"}); txt.style.transition="opacity .15s";
+    if(armed){
+      txt.appendChild(iconEl("cut",CX,CY-8,26,"#f15060"));
+      const l=el("text",{x:CX,y:CY+22,"text-anchor":"middle"},{font:"500 8px var(--mono)",letterSpacing:".22em",fill:"#f15060"});
+      l.textContent="LET IT GO"; txt.appendChild(l);
+    } else {
+      const k=el("text",{x:CX,y:CY-27,"text-anchor":"middle"},{font:"500 7.5px var(--mono)",letterSpacing:".28em",fill:"var(--ink)",opacity:.55});
+      k.textContent= isDayAt(NOW) ? "☼  NOW" : "☾  NOW"; txt.appendChild(k);
+      const big=el("text",{x:CX,y:CY+4,"text-anchor":"middle","dominant-baseline":"central"},
+        {font:"italic 340 40px var(--serif)",fontVariationSettings:'"opsz" 144, "SOFT" 100',letterSpacing:"-.02em",fill:"var(--ink)"});
+      big.textContent=fmt(NOW); txt.appendChild(big);
+      const f=freeHours(), s=el("text",{x:CX,y:CY+33,"text-anchor":"middle"},
+        {font:"500 7.5px var(--mono)",letterSpacing:".2em",fill:f<.5?"#f15060":"var(--ink)",opacity:f<.5?1:.55});
+      s.textContent=durText(f).toUpperCase()+" UNTAPED"; txt.appendChild(s);
+    }
+    gHub.appendChild(txt);
+  }
+
+  // the roll you're pulling from, riding the leading end while drawing
+  function drawRoll(){
+    clear(gRoll);
+    if(!drag||drag.mode!=="draw"||!drag.newId) return;
+    const p=ptAt(drag.cur,R), ty=typeOf(lastType);
+    const gr=el("g",{filter:"url(#liftShadow)"});
+    gr.appendChild(el("circle",{cx:f1(p.x),cy:f1(p.y),r:17,fill:"url(#pat_"+ty.id+")"}));
+    gr.appendChild(el("circle",{cx:f1(p.x),cy:f1(p.y),r:12.5,fill:"none",stroke:"rgba(0,0,0,.14)","stroke-width":.7}));
+    gr.appendChild(el("circle",{cx:f1(p.x),cy:f1(p.y),r:7.5,fill:"var(--core)",stroke:"rgba(0,0,0,.25)","stroke-width":.8}));
+    gr.appendChild(el("circle",{cx:f1(p.x),cy:f1(p.y),r:4.5},{fill:"var(--card)"}));
+    gRoll.appendChild(gr);
+  }
+
+  /* dashed pencil "before" outlines while a gesture is shoving neighbours */
+  function drawGhosts(){
+    clear(gGhost);
+    if(!drag||!drag.origin||drag.mode==="hub"||drag.armDelete) return;
+    for(const b of blocks){
+      const o=drag.origin.get(b.id); if(o===undefined) continue;
+      const dt=b.start-o; if(Math.abs(dt)<SNAP*.5) continue;
+      gGhost.appendChild(el("path",{d:sector(o,o+b.len,R_IN,R_OUT),fill:"none","stroke-width":1,"stroke-dasharray":"2.5 2.5",opacity:.55},{stroke:"var(--ink)"}));
+      const lp=ptAt(o+b.len/2,R_OUT+12), mins=Math.round(dt*60);
+      const tx=el("text",{x:f1(lp.x),y:f1(lp.y),"text-anchor":"middle","dominant-baseline":"central"},{font:"500 8px var(--mono)",fill:"#f15060"});
+      tx.textContent=(mins>0?"+":"")+mins+"m"; gGhost.appendChild(tx);
+    }
+  }
+
+  /* ---------------- the ledger strip ---------------- */
+  const strip=$("strip");
+  function drawLedger(){
+    clear(strip);
+    const W=Math.max(200,Math.round(strip.clientWidth||346)), x=(h)=>1+h/24*(W-2), y0=12, y1=28;
+    strip.setAttribute("viewBox","0 0 "+W+" 38");
+    const ink={stroke:"var(--ink)"};
+    // daylight printed as a yellow rule above, night as blue
+    if(sun.polar!=="night"){
+      const sr=sun.sunrise, ss=sun.sunset;
+      const segs= sr<ss ? [[sr,ss]] : [[0,ss],[sr,24]];
+      for(const [a,b] of segs) strip.appendChild(el("rect",{x:f1(x(a)),y:5,width:f1(x(b)-x(a)),height:3,fill:"#ffe800"},{mixBlendMode:"var(--tape-blend)"}));
+    }
+    strip.appendChild(el("line",{x1:1,y1:y1+.5,x2:W-1,y2:y1+.5,"stroke-width":.6,opacity:.4},ink));
+    for(let h=0;h<=24;h++){
+      strip.appendChild(el("line",{x1:f1(x(h)),y1:y1,x2:f1(x(h)),y2:y1+(h%6===0?6:3),"stroke-width":.6,opacity:h%6===0?.7:.35},ink));
+      if(h%6===0){ const t=el("text",{x:f1(x(h)),y:y1+13,"text-anchor":h===0?"start":h===24?"end":"middle"},
+        {font:"400 6.5px var(--mono)",fill:"var(--ink)",opacity:.55}); t.textContent=String(h).padStart(2,"0"); strip.appendChild(t); }
+    }
+    for(const b of blocks){
+      const x0=x(b.start), x1=x(b.start+b.len), seed=hash(b.id);
+      // straight tape with torn ends
+      let d="M"+f1(x0)+" "+y0+"L"+f1(x1)+" "+y0;
+      for(let i=1;i<=5;i++){ const yy=y0+(y1-y0)*i/5, j=i===5?0:(i%2?1:-1)*(.4+.6*rnd(seed,i))*1.4; d+="L"+f1(x1+j)+" "+f1(yy); }
+      d+="L"+f1(x0)+" "+y1;
+      for(let i=1;i<=5;i++){ const yy=y1-(y1-y0)*i/5, j=i===5?0:(i%2?1:-1)*(.4+.6*rnd(seed+99,i))*1.4; d+="L"+f1(x0+j)+" "+f1(yy); }
+      strip.appendChild(el("path",{d:d+"Z",fill:"url(#pat_"+b.type+")"},{mixBlendMode:"var(--tape-blend)",opacity:"var(--tape-o)"}));
+    }
+    // now marker
+    const nx=x(NOW);
+    strip.appendChild(el("path",{d:"M"+f1(nx)+" "+(y0-1)+"l-3.2 -5h6.4z",fill:"#f15060"}));
+    strip.appendChild(el("line",{x1:f1(nx),y1:y0,x2:f1(nx),y2:y1,stroke:"#f15060","stroke-width":1.1}));
+    const taped=24-freeHours(), free=freeHours();
+    $("sumTaped").innerHTML="<em>"+durText(taped)+"</em>taped";
+    $("sumBare").innerHTML="<em>"+durText(free)+"</em>bare";
+    $("sumBare").classList.toggle("low",free<.5);
+  }
+
+  function render(){ drawTrack(); drawTapes(); drawSpent(); drawGhosts(); drawBodies(); drawNow(); drawHub(); drawRoll(); drawLedger(); }
+
+  /* ---------------- the printed sky: halftone in three inks ----------------
+     Same spatial idea as the clay conic sky — the page behind the dial is a map
+     of the day around it — but printed: yellow dots for daylight, blue for night,
+     fluoro pink where the sun crosses the horizon, each on its own screen angle
+     and a hair out of register. Runs through the live frame, so it rotates (now)
+     or warps (sun) with the dial. Dots grow away from the card. */
+  const sky=$("sky"), sctx=sky.getContext("2d");
+  const smooth=(a,b,x)=>{ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
+  const cdist=(a,b)=>{ const d=Math.abs(((a-b)%24+24)%24); return Math.min(d,24-d); };
+  function skyWeights(h){
+    if(sun.polar==="day") return [1,0,0];
+    if(sun.polar==="night") return [0,1,0];
+    const sr=sun.sunrise, ss=sun.sunset, inDay=isDayAt(h);
+    const edge=Math.min(cdist(h,sr),cdist(h,ss));
+    const day=inDay ? smooth(-.2,2.2,edge) : 0;
+    const night=inDay ? 0 : smooth(-.2,2.4,edge);
+    const glow=Math.exp(-(cdist(h,sr)**2)/1.1)+Math.exp(-(cdist(h,ss)**2)/1.1);
+    return [day,night,clamp(glow,0,1)];
+  }
+  function paintSky(){
+    const dpr=Math.min(2,window.devicePixelRatio||1), W=innerWidth, H=innerHeight;
+    if(sky.width!==Math.round(W*dpr)||sky.height!==Math.round(H*dpr)){ sky.width=Math.round(W*dpr); sky.height=Math.round(H*dpr); }
+    sctx.setTransform(dpr,0,0,dpr,0,0); sctx.clearRect(0,0,W,H);
+    const m=dial.getScreenCTM(); if(!m) return;
+    const cx=m.a*CX+m.c*CY+m.e, cy=m.b*CX+m.d*CY+m.f, cardR=CARD_R*m.a;
+    const N=360, lut=new Array(N);
+    for(let i=0;i<N;i++) lut[i]=skyWeights(thetaToHour(i/N*TAU));
+    const night=document.body.classList.contains("night");
+    // day stock: inks overprint (multiply). midnight stock: opaque ink sitting on dark paper, kept small
+    sctx.globalCompositeOperation= night ? "source-over" : "multiply";
+    const layers= night
+      ? [ {k:0,color:"#ffe14d",ang:15,off:[.6,-.4],max:.26},
+          {k:2,color:"#ff48b0",ang:75,off:[-.5,.5],max:.3},
+          {k:1,color:"#5ec8e5",ang:45,off:[0,0],max:.2,stars:true} ]
+      : [ {k:0,color:"#ffe800",ang:15,off:[.6,-.4],max:.5},
+          {k:1,color:"#0078bf",ang:45,off:[-.5,.4],max:.4},
+          {k:2,color:"#ff48b0",ang:75,off:[.2,.6],max:.5} ];
+    const S=6.4, span=Math.hypot(W,H)/2+S;
+    // keep the masthead type on clean paper: dots thin out near it (feathered box)
+    const mr=$("mast").getBoundingClientRect(), pad=18;
+    const mastClear=(x,y)=>{ const dx=Math.max(mr.left+10-x,0,x-(mr.right-10)), dy=Math.max(mr.top-x*0-y,0,y-(mr.bottom+4));
+      return smooth(0,pad*2,Math.hypot(dx,dy)); };
+    for(const L of layers){
+      const ang=L.ang*Math.PI/180, ca=Math.cos(ang), sa=Math.sin(ang);
+      sctx.fillStyle=L.color; sctx.beginPath();
+      for(let u=-span;u<=span;u+=S){
+        for(let v=-span;v<=span;v+=S){
+          const x=W/2+u*ca-v*sa+L.off[0], y=H/2+u*sa+v*ca+L.off[1];
+          if(x<-S||x>W+S||y<-S||y>H+S) continue;
+          const dx=x-cx, dy=y-cy, dist=Math.hypot(dx,dy);
+          if(dist<cardR-6) continue;
+          const fade=smooth(cardR*.98,cardR*2.3,dist);
+          let th=Math.atan2(dx,-dy); if(th<0) th+=TAU;
+          let w=lut[Math.floor(th/TAU*N)%N][L.k]*fade*mastClear(x,y);
+          if(L.stars){ if(rnd(hash(Math.round(u/S)+":"+Math.round(v/S)),1)>.07) continue; w=Math.min(1,w*3); }
+          const r=S*L.max*Math.sqrt(w);
+          if(r<.3) continue;
+          sctx.moveTo(x+r,y); sctx.arc(x,y,r,0,TAU);
+        }
+      }
+      sctx.fill();
+    }
+    sctx.globalCompositeOperation="source-over";
+  }
+
+  /* ---------------- stock: cream paper by day, midnight paper after dark ---------------- */
+  function applyStock(){
+    const night=!isDayAt(nowHour());
+    const changed=document.body.classList.contains("night")!==night;
+    document.body.classList.toggle("night",night);
+    document.documentElement.style.setProperty("--moon-ink", night ? "#f0e2bf" : "#0078bf");
+    const meta=document.querySelector('meta[name="theme-color"]'); if(meta) meta.content=night?"#141828":"#efe6d4";
+    return changed;
+  }
+  function writeMasthead(){
+    const d=new Date();
+    $("dayname").textContent=d.toLocaleDateString(undefined,{weekday:"long"});
+    $("almNo").textContent="Nº "+dayOfYear(d);
+    const date=d.toLocaleDateString(undefined,{day:"numeric",month:"long"});
+    const D=((sun.sunset-sun.sunrise)%24+24)%24;
+    $("dateline").innerHTML = sun.polar
+      ? "<i>"+date+"</i> · "+(sun.polar==="day"?"the sun never sets":"the sun never rises")
+      : "<i>"+date+"</i> — rise "+fmt(sun.sunrise)+" · set "+fmt(sun.sunset)+"<br>"+durText(D)+" of light";
+  }
+
+  /* ---------------- feedback ---------------- */
+  const vib=(p)=>{ if(navigator.vibrate) navigator.vibrate(p); };
+  const haptic=()=>vib(8), hapticTick=()=>vib(3), hapticWarn=()=>vib([12,30,12]);
+  const hapticTear=()=>vib([4,16,3,12,5,10,6]);   // a felt rip
+  const READ=$("readout"), dialWrap=$("dialWrap");
+  function showRead(main,sub){ READ.querySelector(".main").textContent=main; READ.querySelector(".sub").textContent=sub;
+    READ.classList.add("show"); dialWrap.classList.add("reading"); }
+  function hideRead(){ READ.classList.remove("show"); dialWrap.classList.remove("reading"); }
+
+  /* ---------------- gestures (same grammar as the clay build) ----------------
+     empty ring drag -> pull tape off the roll (tears on release)
+     tap a strip     -> tape rolls roll out: re-tape it, or cut it
+     strip edge drag -> resize · body drag -> slide (cascade)
+     hold, or pull off the ring -> peel it and carry; drop on the seal to bin it
+     seal drag       -> spin the whole day */
+  const ptSVG=(()=>{ const pt=dial.createSVGPoint(); return (e)=>{ pt.x=e.clientX; pt.y=e.clientY;
+    return pt.matrixTransform(dial.getScreenCTM().inverse()); }; })();
+  function blockIndexAtHour(t){
+    for(let i=0;i<blocks.length;i++){ const b=blocks[i]; if(t>=b.start&&t<b.start+b.len) return i; }
+    for(let i=blocks.length-1;i>=0;i--){ const b=blocks[i]; if(Math.abs(t-(b.start+b.len))<1e-9) return i; }
+    return -1;
+  }
+  function gapAround(t){
+    let lo=0,hi=24;
+    for(const b of blocks){ const e=b.start+b.len; if(e<=t+1e-9) lo=Math.max(lo,e); if(b.start>=t-1e-9) hi=Math.min(hi,b.start); }
+    return {lo,hi};
+  }
+  const angDist=(a,b)=>{ const d=Math.abs(((a-b)%24+24)%24); return Math.min(d,24-d); };
+  const TAP_PX=7, HOLD_MS=380, LIFT_IN=.64, LIFT_OUT=1.32, HUB_DELETE=HUB_R/R*.9;
+  let drag=null, picker=null;
+
+  // collision legibility: the shoved neighbour peels up a little for a beat
+  const liftedIds=new Set();
+  function detectHit(before,ex){ for(const b of blocks){ if(b.id===ex) continue; const o=before.get(b.id); if(o!==undefined&&Math.abs(b.start-o)>1e-6) return b.id; } return null; }
+  function clearNeighborLift(){ for(const id of liftedIds) if(springs[id]) springs[id].liftTarget=0; liftedIds.clear(); }
+  function applyCollisionLift(id,hit){ clearNeighborLift(); if(hit){ setLift(id,1); setLift(hit,.55); liftedIds.add(id); liftedIds.add(hit); } else setLift(id,0); }
+  function settleAllLifts(){ clearNeighborLift(); for(const id in springs) springs[id].liftTarget=0; kickRaf(); }
+
+  dial.addEventListener("pointerdown",(e)=>{
+    if(drag||picker) return;
+    e.preventDefault(); try{dial.setPointerCapture(e.pointerId);}catch(_){}
+    const p=ptSVG(e), r=ringDist(p.x,p.y), rawT=ptToHour(p.x,p.y);
+    const base={pid:e.pointerId,x0:e.clientX,y0:e.clientY,lastX:e.clientX,lastY:e.clientY,active:false};
+    if(r<HUB_R/R){ drag={...base,mode:"hub",lastT:rawT,active:true}; haptic(); return; }
+    if(Math.abs(r-1)>=.42) return;
+    const idx=blockIndexAtHour(rawT);
+    if(idx<0){
+      const {lo,hi}=gapAround(rawT);
+      if(hi-lo<SNAP){ hapticWarn(); return; }
+      const anchor=clamp(snap(rawT),lo,hi);
+      drag={...base,mode:"draw",active:true,anchor,lo,hi,cur:anchor,lastRaw:rawT,unw:rawT,newId:null,wall:null};
+      hapticTick(); showRead(fmt(anchor),"pull round the ring");
+      return;
+    }
+    const b=blocks[idx], grab=Math.min(.55,b.len*.3);
+    const dS=angDist(rawT,b.start), dE=angDist(rawT,b.start+b.len);
+    let mode="move", edge=null;
+    if(dS<grab&&dS<=dE){mode="resize";edge="start";} else if(dE<grab){mode="resize";edge="end";}
+    drag={...base,mode,edge,id:b.id,grabOffset:rawT-b.start,origin:new Map(blocks.map(x=>[x.id,x.start]))};
+    drag.hold=setTimeout(()=>{ if(drag&&!drag.active&&drag.id===b.id) startCarry(); },HOLD_MS);
+    bump(b.id,.6);
+  });
+
+  window.addEventListener("pointermove",(e)=>{
+    if(!drag||e.pointerId!==drag.pid) return; e.preventDefault();
+    drag.lastX=e.clientX; drag.lastY=e.clientY;
+    const p=ptSVG(e), rawT=ptToHour(p.x,p.y), r=ringDist(p.x,p.y);
+    if(!drag.active){
+      if(Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)<TAP_PX) return;
+      drag.active=true; clearTimeout(drag.hold); if(byId(drag.id)) bump(drag.id,1.2); haptic();
+    }
+    if(drag.mode==="carry"){ carryMove(e,r,rawT); return; }
+    if(drag.mode==="draw"){ drawMove(rawT); return; }
+    if(drag.mode==="hub"){
+      let d=rawT-drag.lastT; d=((d+12)%24+24)%24-12;
+      if(Math.abs(d)>.001){
+        for(const b of blocks) b.start=((b.start+d)%24+24)%24;
+        sortBlocks();
+        const last=blocks[blocks.length-1];
+        if(last&&last.start+last.len>24) resolve(blocks,blocks.length-1,24-last.len);
+        else if(blocks.length) resolve(blocks,0,blocks[0].start);
+        drag.lastT=rawT; for(const b of blocks) bump(b.id,.12);
+        render(); showRead("spin","the whole day turns");
+      }
+      return;
+    }
+    const b=byId(drag.id); if(!b) return;
+    const idx=blocks.indexOf(b);
+    if(drag.mode==="move"&&(r<LIFT_IN||r>LIFT_OUT)){ startCarry(); carryMove(e,r,rawT); return; }
+    const before=new Map(blocks.map(x=>[x.id,x.start]));
+    if(drag.mode==="move"){
+      const pre=b.start;
+      resolve(blocks,idx,rawT-drag.grabOffset,drag.origin);
+      if(Math.abs(b.start-pre)>1e-9) hapticTick();
+    } else {
+      const others=blocks.reduce((s,x)=>x===b?s:s+x.len,0);
+      if(drag.edge==="end"){
+        let nl=Math.min(Math.max(SNAP,snap(rawT-b.start)),24-others,24-b.start);
+        if(nl!==b.len) hapticTick(); b.len=nl; resolve(blocks,idx,b.start,drag.origin);
+      } else {
+        const end=b.start+b.len;
+        let nl=Math.min(Math.max(SNAP,snap(end-rawT)),24-others,end);
+        if(nl!==b.len) hapticTick(); b.len=nl; resolve(blocks,idx,end-nl,drag.origin);
+      }
+    }
+    applyCollisionLift(b.id,detectHit(before,b.id));
+    bump(b.id,.25); render(); updateRead();
+  },{passive:false});
+
+  function updateRead(){
+    const b=drag&&byId(drag.id); if(!b) return; const ty=typeOf(b.type);
+    if(drag.mode==="resize") showRead(durText(b.len),ty.name+" · "+fmt(b.start)+"–"+fmt(b.start+b.len));
+    else showRead(fmt(b.start)+"–"+fmt(b.start+b.len),ty.name+" · "+durText(freeHours())+" bare");
+  }
+
+  /* ---- draw: tape unrolls from where the finger landed, either direction ---- */
+  function drawMove(rawT){
+    let d=rawT-drag.lastRaw; d=((d+12)%24+24)%24-12; drag.lastRaw=rawT; drag.unw+=d;
+    const want=snap(drag.unw), cur=clamp(want,drag.lo,drag.hi);
+    const wall=want>drag.hi?"hi":want<drag.lo?"lo":null;
+    if(wall&&wall!==drag.wall){
+      const edgeT=wall==="hi"?drag.hi:drag.lo;
+      const nb=blocks.find(x=>wall==="hi"?Math.abs(x.start-edgeT)<1e-9:Math.abs(x.start+x.len-edgeT)<1e-9);
+      if(nb){ bump(nb.id,wall==="hi"?1:-1); hapticWarn(); }
+    }
+    drag.wall=wall;
+    if(cur!==drag.cur) hapticTick();
+    drag.cur=cur;
+    const s0=Math.min(drag.anchor,cur), s1=Math.max(drag.anchor,cur), len=s1-s0;
+    let nb=drag.newId&&byId(drag.newId);
+    if(len>=SNAP){
+      if(!nb){ nb={id:uid(),type:lastType,start:s0,len}; blocks.push(nb); drag.newId=nb.id; }
+      nb.start=s0; nb.len=len; sortBlocks();
+      showRead(fmt(s0)+"–"+fmt(s1), durText(len)+(wall?" · butts up":" · "+durText(freeHours())+" bare"));
+    } else {
+      if(nb){ blocks.splice(blocks.indexOf(nb),1); delete springs[nb.id]; drag.newId=null; }
+      showRead(fmt(drag.anchor),"pull round the ring");
+    }
+    render();
+  }
+
+  /* ---- carry: peel the strip off and stick it somewhere else ---- */
+  const carryEl=$("carry");
+  function stripSVG(b,long){
+    const ty=typeOf(b.type), w=long, h=30, seed=hash(b.id);
+    let d="M0 0L"+w+" 0";
+    for(let i=1;i<=6;i++){ const y=h*i/6, j=i===6?0:(i%2?1:-1)*(.4+.6*rnd(seed,i))*2.6; d+="L"+f1(w+j)+" "+f1(y); }
+    d+="L0 "+h;
+    for(let i=1;i<=6;i++){ const y=h-h*i/6, j=i===6?0:(i%2?1:-1)*(.4+.6*rnd(seed+99,i))*2.6; d+="L"+f1(j)+" "+f1(y); }
+    const icon=ICON[b.type];
+    return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'
+      +'<defs><linearGradient id="curl" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".18"/><stop offset=".25" stop-color="#fff" stop-opacity=".18"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>'
+      +'<path d="'+d+'Z" fill="url(#pat_'+b.type+')"/><path d="'+d+'Z" fill="url(#curl)"/>'
+      +'<g transform="translate('+(w/2-7)+' 8) scale(.583)"><path d="'+icon.d+'" fill="'+(icon.f?ty.ink:"none")+'" stroke="'+ty.ink+'" stroke-width="'+(icon.f?.6:1.9)+'" stroke-linecap="round" stroke-linejoin="round"/></g></svg>';
+  }
+  function placeCarryEl(x,y){ carryEl.style.transform="translate("+(x-carryEl._w/2)+"px,"+(y-58)+"px) rotate(-8deg)"; }
+  function startCarry(){
+    const b=byId(drag.id); if(!b) return;
+    clearTimeout(drag.hold);
+    for(const x of blocks){ const o=drag.origin.get(x.id); if(o!==undefined) x.start=o; }
+    sortBlocks();
+    drag.block=b; drag.rest=blocks.filter(x=>x!==b);
+    drag.restOrigin=new Map(drag.rest.map(x=>[x.id,x.start]));
+    drag.mode="carry"; drag.active=true; drag.slot=null; drag.armDelete=false;
+    clearNeighborLift(); setLift(b.id,1);
+    const w=Math.round(clamp(b.len*26,46,150)); carryEl._w=w;
+    carryEl.innerHTML=stripSVG(b,w); carryEl.className=""; carryEl.style.display="block";
+    placeCarryEl(drag.lastX,drag.lastY);
+    haptic(); render();
+    showRead(fmt(b.start)+"–"+fmt(b.start+b.len),"peeled · stick it anywhere");
+  }
+  function carryMove(e,r,rawT){
+    placeCarryEl(e.clientX,e.clientY);
+    const b=drag.block, armed=r<HUB_DELETE;
+    if(armed!==drag.armDelete){ drag.armDelete=armed; carryEl.classList.toggle("doomed",armed); if(armed) hapticWarn(); }
+    if(armed){
+      for(const x of drag.rest) x.start=drag.restOrigin.get(x.id);
+      blocks=drag.rest.slice(); drag.slot=null;
+      READ.classList.add("danger"); showRead("into the bin?",typeOf(b.type).name+" · pull back out to keep");
+      render(); return;
+    }
+    READ.classList.remove("danger");
+    carryPlace(rawT);
+  }
+  function carryPlace(rawT){
+    const b=drag.block;
+    for(const x of drag.rest) x.start=drag.restOrigin.get(x.id);
+    const list=drag.rest.slice();
+    let idx=0; while(idx<list.length&&list[idx].start+list[idx].len/2<rawT) idx++;
+    // over a strip: butt up against its near edge ("between A and B" pushes B on).
+    // over bare ring: keep the grip it was peeled by, inside the gap if it fits.
+    const over=list.find(x=>rawT>=x.start&&rawT<x.start+x.len);
+    let want;
+    if(over) want=list.indexOf(over)<idx?over.start+over.len:over.start;
+    else{
+      const lo=idx>0?list[idx-1].start+list[idx-1].len:0, hi=idx<list.length?list[idx].start:24;
+      want=rawT-clamp(drag.grabOffset,0,b.len);
+      if(hi-lo>=b.len) want=clamp(want,lo,hi-b.len);
+    }
+    list.splice(idx,0,b);
+    resolve(list,idx,want,drag.restOrigin);
+    blocks=list;
+    const slot=idx+"@"+b.start; if(slot!==drag.slot){ hapticTick(); drag.slot=slot; }
+    showRead(fmt(b.start)+"–"+fmt(b.start+b.len),typeOf(b.type).name+" · let go to stick");
+    render();
+  }
+
+  function endDrag(cancel){
+    if(!drag) return;
+    const d=drag; drag=null; clearTimeout(d.hold);
+    READ.classList.remove("danger"); clear(gGhost); clear(gRoll);
+    if(!cancel&&!d.active&&(d.mode==="move"||d.mode==="resize")){ settleAllLifts(); render(); openPicker(d.id,false); return; }
+    if(d.mode==="draw"){
+      if(d.newId&&!cancel){ hapticTear(); bump(d.newId,1.6); settleAllLifts(); render(); save(); openPicker(d.newId,true); return; }
+      if(d.newId) blocks=blocks.filter(x=>x.id!==d.newId);
+      else if(!cancel){ showRead("pull, don't tap","drag along the bare ring"); }
+    } else if(d.mode==="carry"){
+      if(cancel){ blocks=[...d.rest,d.block]; for(const x of blocks){ const o=d.origin.get(x.id); if(o!==undefined) x.start=o; } sortBlocks(); carryEl.style.display="none"; }
+      else if(d.armDelete){
+        blocks=d.rest; delete springs[d.block.id]; hapticWarn();
+        carryEl.classList.add("binned"); setTimeout(()=>{ carryEl.style.display="none"; },380);
+      } else {
+        carryEl.style.display="none";
+        for(const x of blocks) bump(x.id,.5); bump(d.block.id,1.8); haptic();
+      }
+    } else if(d.id&&byId(d.id)) bump(d.id,1.5);
+    settleAllLifts(); render(); setTimeout(hideRead,cancel?0:750); save();
+  }
+  window.addEventListener("pointerup",(e)=>{ if(drag&&e.pointerId===drag.pid) endDrag(false); });
+  window.addEventListener("pointercancel",(e)=>{ if(drag&&e.pointerId===drag.pid) endDrag(true); });
+
+  /* ---------------- picker: tape rolls roll out of the strip ---------------- */
+  const pickerEl=$("picker");
+  const toScreen=(pt)=>{ const m=dial.getScreenCTM(); return {x:m.a*pt.x+m.c*pt.y+m.e, y:m.b*pt.x+m.d*pt.y+m.f}; };
+  function rollSVG(p){
+    const ic=ICON[p.id];
+    return '<svg viewBox="-28 -28 56 56">'
+      +'<path d="M2 13h22l-1.4 3 2.2 3-1.8 3 1.6 3H2z" fill="url(#pat_'+p.id+')"/>'
+      +'<circle r="25" fill="url(#pat_'+p.id+')"/>'
+      +'<circle r="25" fill="none" stroke="rgba(0,0,0,.12)" stroke-width="1"/>'
+      +'<circle r="20" fill="none" stroke="rgba(0,0,0,.09)" stroke-width=".7"/>'
+      +'<circle r="16" fill="none" stroke="rgba(0,0,0,.08)" stroke-width=".7"/>'
+      +'<circle r="12.5" fill="var(--core)" stroke="rgba(0,0,0,.25)" stroke-width=".8"/>'
+      +'<circle r="9.5" style="fill:var(--card)"/>'
+      +'<g transform="translate(-6.5 -6.5) scale(.54)"><path d="'+ic.d+'" style="fill:'+(ic.f?"var(--ink)":"none")+';stroke:var(--ink)" stroke-width="'+(ic.f?.6:2)+'" stroke-linecap="round" stroke-linejoin="round"/></g>'
+      +'<path d="M-18 -17a25 25 0 0 1 12 -7" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2.2" stroke-linecap="round"/>'
+      +'</svg>';
+  }
+  function cutSVG(){
+    return '<svg viewBox="-28 -28 56 56"><circle r="24" style="fill:var(--card)" stroke="#f15060" stroke-width="1.2" stroke-dasharray="3.5 3"/>'
+      +'<g transform="translate(-11 -11) scale(.92)"><path d="'+ICON.cut.d+'" fill="none" stroke="#f15060" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g></svg>';
+  }
+  function openPicker(id,isNew){
+    const b=byId(id); if(!b) return;
+    picker={id,isNew}; setLift(id,.8);
+    const mid=b.start+b.len/2, P=toScreen(ptAt(mid,R)), C=toScreen({x:CX,y:CY});
+    const scale=Math.hypot(P.x-C.x,P.y-C.y)/R;
+    const items=[...PALETTE,{cut:true}];
+    const n=items.length, Rr=.66*R*scale, step=58/Rr, th0=hourToTheta(mid);
+    const W=innerWidth, H=innerHeight;
+    pickerEl.querySelectorAll(".roll").forEach(x=>x.remove());
+    items.forEach((it,i)=>{
+      const a=th0+(i-(n-1)/2)*step;
+      const x=clamp(C.x+Math.sin(a)*Rr,32,W-32), y=clamp(C.y-Math.cos(a)*Rr,40,H-40);
+      const bt=document.createElement("button");
+      bt.className="roll"+(it.cut?" cut":"")+(it.id===b.type?" cur":"");
+      bt.style.left=x+"px"; bt.style.top=y+"px";
+      bt.style.setProperty("--fx",(P.x-x)+"px"); bt.style.setProperty("--fy",(P.y-y)+"px");
+      bt.style.setProperty("--d",(i*34)+"ms");
+      bt.innerHTML=(it.cut?cutSVG():rollSVG(it))+'<span class="nm"></span>';
+      bt.querySelector(".nm").textContent=it.cut?"cut it":it.name;
+      bt.setAttribute("aria-label",it.cut?"Remove section":it.name);
+      bt.addEventListener("pointerdown",(e)=>e.stopPropagation());
+      bt.addEventListener("pointerup",(e)=>{ e.stopPropagation();
+        if(it.cut){ const pid=picker&&picker.id; closePicker(); if(pid) cutStrip(pid); }
+        else chooseType(it.id); });
+      pickerEl.appendChild(bt);
+    });
+    pickerEl.classList.add("live"); void pickerEl.offsetWidth; pickerEl.classList.add("open");
+    haptic();
+    // the rolls fill the hub, so the label moves to the far rim of the card
+    const upper=Math.cos(th0)>0, wrapR=dialWrap.getBoundingClientRect(), cardPx=CARD_R*scale;
+    READ.style.setProperty("--ry",(C.y-wrapR.top+(upper?1:-1)*(cardPx-14))+"px");
+    READ.classList.add("aside"); dialWrap.classList.add("aside");
+    showRead(fmt(b.start)+"–"+fmt(b.start+b.len),(isNew?"torn off · ":"")+durText(b.len)+" · pick a roll");
+  }
+  function chooseType(type){
+    if(!picker) return;
+    const b=byId(picker.id);
+    if(b){ b.type=type; lastType=type; bump(b.id,1.8); }
+    hapticTick(); closePicker(); render(); save();
+  }
+  function cutStrip(id){
+    const i=blocks.findIndex(x=>x.id===id); if(i<0) return;
+    blocks.splice(i,1); delete springs[id]; hapticTear(); render(); save();
+  }
+  function closePicker(){
+    if(!picker) return;
+    setLift(picker.id,0); picker=null;
+    pickerEl.classList.remove("open");
+    setTimeout(()=>{ if(!picker){ pickerEl.classList.remove("live"); pickerEl.querySelectorAll(".roll").forEach(x=>x.remove()); } },300);
+    hideRead(); READ.classList.remove("aside"); dialWrap.classList.remove("aside"); kickRaf();
+  }
+  pickerEl.addEventListener("pointerdown",(e)=>{ e.preventDefault(); closePicker(); });
+  window.addEventListener("keydown",(e)=>{ if(e.key==="Escape") closePicker(); });
+
+  /* ---------------- frame tabs ---------------- */
+  const frameNav=$("frames");
+  function syncFrames(){ frameNav.querySelectorAll("button").forEach(bt=>{ const on=bt.dataset.f===frame;
+    bt.classList.toggle("on",on); bt.setAttribute("aria-checked",on); }); }
+  let frameAnim=0;
+  function setFrame(next,animate){
+    if(!FRAMES.includes(next)) return;
+    NOW=nowHour();
+    if(!animate||next===frame){ frame=frameFrom=next; frameK=1; syncFrames(); drawAll(); return; }
+    frameFrom=frame; frame=next; frameK=0; syncFrames();
+    const t0=performance.now(), dur=720, id=++frameAnim;
+    (function step(now){
+      if(id!==frameAnim) return;
+      const k=clamp((now-t0)/dur,0,1);
+      frameK=k<1?1-Math.pow(1-k,3):1; if(k>=1) frameFrom=frame;
+      drawAll();
+      if(k<1) requestAnimationFrame(step);
+    })(t0);
+  }
+  frameNav.addEventListener("pointerdown",(e)=>{ const bt=e.target.closest("button"); if(!bt||drag) return;
+    e.preventDefault(); haptic(); setFrame(bt.dataset.f,true); save(); });
+
+  function drawAll(){ drawCard(); render(); paintSky(); }
+
+  /* ---------------- animation loop + housekeeping ---------------- */
+  let rafOn=false;
+  function kickRaf(){ if(!rafOn){ rafOn=true; requestAnimationFrame(tick); } }
+  function tick(){
+    let active=!!drag;
+    for(const id in springs){ const sp=springs[id];
+      sp.v+=(-sp.x)*.18; sp.v*=.72; sp.x+=sp.v;
+      if(Math.abs(sp.v)>.002||Math.abs(sp.x)>.002) active=true; else { sp.x=0; sp.v=0; }
+      sp.lift+=(sp.liftTarget-sp.lift)*(sp.lift<sp.liftTarget?.34:.14);
+      if(Math.abs(sp.liftTarget-sp.lift)<.003) sp.lift=sp.liftTarget; else active=true;
+    }
+    if(active){ drawTapes(); if(drag) drawGhosts(); requestAnimationFrame(tick); } else rafOn=false;
+  }
+  let lastMin=-1, sunKey="";
+  function housekeeping(){
+    const d=new Date(), key=d.toDateString()+"/"+d.getTimezoneOffset();
+    let repaint=false;
+    if(key!==sunKey){ sunKey=key; computeSun(); repaint=true; }
+    if(applyStock()) repaint=true;
+    const m=Math.floor(nowHour()*60);
+    if(m!==lastMin&&!drag){ lastMin=m; NOW=nowHour(); if(frame==="now") repaint=true; else render(); }
+    if(repaint&&!drag) drawAll();
+  }
+  setInterval(housekeeping,5000);
+
+  /* ---------------- boot ---------------- */
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      p=>{ LAT=p.coords.latitude; LON=p.coords.longitude; computeSun(); applyStock(); drawAll(); },
+      ()=>{}, {timeout:4000,maximumAge:3600e3});
+  }
+  buildPatterns();
+  computeSun(); applyStock(); sunKey=new Date().toDateString()+"/"+new Date().getTimezoneOffset();
+  syncFrames();
+  drawAll();
+  save();
+  window.addEventListener("resize",()=>paintSky());
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>render());
+  document.addEventListener("gesturestart",(e)=>e.preventDefault());
+  document.addEventListener("contextmenu",(e)=>e.preventDefault());
+})();
+</script>
+</body>
+</html>
