@@ -83,7 +83,14 @@
 
   /* ---- dial ---- */
   #dialWrap{flex:1 1 auto;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;padding:4px 0;}
-  svg#dial{display:block;width:100%;height:100%;overflow:visible;}
+  svg#dial{display:block;position:relative;width:100%;height:100%;overflow:visible;}
+  /* the die-cut paper disc is an HTML circle with a CSS shadow, sized to the dial by JS. It used
+     to be an SVG feDropShadow inside the dial, and re-rasterising that big blur on every tape
+     change was ~80% of all raster work during gestures and frame morphs. */
+  #card{position:absolute;left:0;top:0;border-radius:50%;pointer-events:none;background:var(--card);
+    box-shadow:inset 0 0 0 1px var(--card-edge), 0 10px 22px rgba(58,42,20,.2), 0 1.5px 2.4px rgba(58,42,20,.16);
+    transition:background-color .9s ease;}
+  body.night #card{box-shadow:inset 0 0 0 1px var(--card-edge), 0 12px 26px rgba(0,0,0,.4), 0 1.5px 2.4px rgba(0,0,0,.3);}
 
   /* Dymo readout, pressed across the hub */
   #readout{position:absolute;left:50%;top:50%;z-index:10;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:4px;
@@ -173,12 +180,9 @@
   </header>
 
   <div id="dialWrap">
+    <div id="card"></div>
     <svg id="dial" viewBox="0 0 390 390" preserveAspectRatio="xMidYMid meet" aria-label="24-hour day dial">
       <defs id="defs">
-        <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="10" stdDeviation="11" flood-color="#3a2a14" flood-opacity=".2"/>
-          <feDropShadow dx="0" dy="1.5" stdDeviation="1.2" flood-color="#3a2a14" flood-opacity=".16"/>
-        </filter>
         <filter id="tapeShadow" x="-10%" y="-10%" width="120%" height="120%">
           <feDropShadow dx="0" dy=".8" stdDeviation=".7" flood-color="#3a2a14" flood-opacity=".22"/>
         </filter>
@@ -191,7 +195,6 @@
           <feDisplacementMap in="SourceGraphic" in2="n" scale="1.3"/>
         </filter>
       </defs>
-      <g id="gCard"></g>
       <g id="gTrack"></g>
       <g id="gTape"></g>
       <g id="gSpent"></g>
@@ -455,14 +458,17 @@
 
   /* ---------------- render ---------------- */
   const g=(id)=>$(id);
-  const gCard=g("gCard"),gTrack=g("gTrack"),gTape=g("gTape"),gSpent=g("gSpent"),gGhost=g("gGhost"),
+  const gTrack=g("gTrack"),gTape=g("gTape"),gSpent=g("gSpent"),gGhost=g("gGhost"),
         gLabels=g("gLabels"),gBodies=g("gBodies"),gNow=g("gNow"),gHub=g("gHub"),gRoll=g("gRoll");
 
+  // the die-cut paper disc lying on the printed sheet: place the HTML disc under the dial
+  const cardEl=$("card");
   function drawCard(){
-    clear(gCard);
-    // the die-cut paper disc lying on the printed sheet
-    gCard.appendChild(el("circle",{cx:CX,cy:CY,r:CARD_R,filter:"url(#cardShadow)"},{fill:"var(--card)"}));
-    gCard.appendChild(el("circle",{cx:CX,cy:CY,r:CARD_R-.5,fill:"none","stroke-width":1},{stroke:"var(--card-edge)"}));
+    const m=dial.getScreenCTM(); if(!m) return;
+    const wr=dialWrap.getBoundingClientRect(), r=CARD_R*m.a;
+    const x=m.a*CX+m.e-wr.left-r, y=m.d*CY+m.f-wr.top-r;
+    cardEl.style.width=cardEl.style.height=f1(r*2)+"px";
+    cardEl.style.transform="translate("+f1(x)+"px,"+f1(y)+"px)";
   }
 
   function drawTrack(){
@@ -721,46 +727,84 @@
     const glow=Math.exp(-(cdist(h,sr)**2)/1.1)+Math.exp(-(cdist(h,ss)**2)/1.1);
     return [day,night,clamp(glow,0,1)];
   }
-  function paintSky(){
-    const dpr=Math.min(2,window.devicePixelRatio||1), W=innerWidth, H=innerHeight;
-    if(sky.width!==Math.round(W*dpr)||sky.height!==Math.round(H*dpr)){ sky.width=Math.round(W*dpr); sky.height=Math.round(H*dpr); }
-    sctx.setTransform(dpr,0,0,dpr,0,0); sctx.clearRect(0,0,W,H);
-    const m=dial.getScreenCTM(); if(!m) return;
-    const cx=m.a*CX+m.c*CY+m.e, cy=m.b*CX+m.d*CY+m.f, cardR=CARD_R*m.a;
-    const N=360, lut=new Array(N);
-    for(let i=0;i<N;i++) lut[i]=skyWeights(thetaToHour(i/N*TAU));
-    const night=document.body.classList.contains("night");
+  /* Performance: the dot screen itself never moves — only each dot's size changes with
+     the frame. So the geometry (position, angle bin, card fade, masthead clearance, star
+     mask) is built once per layout+stock and cached in typed arrays; a repaint is then one
+     LUT lookup + one arc per dot. While a frame morph is running the canvas drops to 1x
+     resolution (softness is invisible in motion) and the last step repaints at full dpr. */
+  const SKY_N=720, SKY_S=6.4;
+  let skyGeo=null;
+  function skyGeometry(W,H,cx,cy,cardR,night){
+    const mr=$("mast").getBoundingClientRect();
+    const key=[W,H,cx.toFixed(1),cy.toFixed(1),cardR.toFixed(1),night,Math.round(mr.left),Math.round(mr.right),Math.round(mr.bottom)].join("|");
+    if(skyGeo&&skyGeo.key===key) return skyGeo;
     // day stock: inks overprint (multiply). midnight stock: opaque ink sitting on dark paper, kept small
-    sctx.globalCompositeOperation= night ? "source-over" : "multiply";
-    const layers= night
+    const specs= night
       ? [ {k:0,color:"#ffe14d",ang:15,off:[.6,-.4],max:.26},
           {k:2,color:"#ff48b0",ang:75,off:[-.5,.5],max:.3},
           {k:1,color:"#5ec8e5",ang:45,off:[0,0],max:.2,stars:true} ]
       : [ {k:0,color:"#ffe800",ang:15,off:[.6,-.4],max:.5},
           {k:1,color:"#0078bf",ang:45,off:[-.5,.4],max:.4},
           {k:2,color:"#ff48b0",ang:75,off:[.2,.6],max:.5} ];
-    const S=6.4, span=Math.hypot(W,H)/2+S;
+    const S=SKY_S, span=Math.hypot(W,H)/2+S, pad=18;
     // keep the masthead type on clean paper: dots thin out near it (feathered box)
-    const mr=$("mast").getBoundingClientRect(), pad=18;
-    const mastClear=(x,y)=>{ const dx=Math.max(mr.left+10-x,0,x-(mr.right-10)), dy=Math.max(mr.top-x*0-y,0,y-(mr.bottom+4));
+    const mastClear=(x,y)=>{ const dx=Math.max(mr.left+10-x,0,x-(mr.right-10)), dy=Math.max(mr.top-y,0,y-(mr.bottom+4));
       return smooth(0,pad*2,Math.hypot(dx,dy)); };
-    for(const L of layers){
-      const ang=L.ang*Math.PI/180, ca=Math.cos(ang), sa=Math.sin(ang);
-      sctx.fillStyle=L.color; sctx.beginPath();
+    const layers=specs.map(L=>{
+      const ang=L.ang*Math.PI/180, ca=Math.cos(ang), sa=Math.sin(ang), xs=[], ys=[], bins=[], ws=[];
       for(let u=-span;u<=span;u+=S){
         for(let v=-span;v<=span;v+=S){
           const x=W/2+u*ca-v*sa+L.off[0], y=H/2+u*sa+v*ca+L.off[1];
           if(x<-S||x>W+S||y<-S||y>H+S) continue;
           const dx=x-cx, dy=y-cy, dist=Math.hypot(dx,dy);
           if(dist<cardR-6) continue;
-          const fade=smooth(cardR*.98,cardR*2.3,dist);
+          let w=smooth(cardR*.98,cardR*2.3,dist)*mastClear(x,y);
+          if(L.stars){ if(rnd(hash(Math.round(u/S)+":"+Math.round(v/S)),1)>.07) continue; w*=3; }
+          if(S*L.max*Math.sqrt(Math.min(1,w))<.3) continue;   // can never grow big enough to print
           let th=Math.atan2(dx,-dy); if(th<0) th+=TAU;
-          let w=lut[Math.floor(th/TAU*N)%N][L.k]*fade*mastClear(x,y);
-          if(L.stars){ if(rnd(hash(Math.round(u/S)+":"+Math.round(v/S)),1)>.07) continue; w=Math.min(1,w*3); }
-          const r=S*L.max*Math.sqrt(w);
-          if(r<.3) continue;
-          sctx.moveTo(x+r,y); sctx.arc(x,y,r,0,TAU);
+          xs.push(x); ys.push(y); bins.push(Math.floor(th/TAU*SKY_N)%SKY_N); ws.push(w);
         }
+      }
+      return {k:L.k,color:L.color,max:L.max,stars:!!L.stars,
+        xs:Float32Array.from(xs),ys:Float32Array.from(ys),bins:Uint16Array.from(bins),ws:Float32Array.from(ws)};
+    });
+    return skyGeo={key,layers};
+  }
+  // angle bin -> ink weights through the live frame. Sample the (monotone) frame map forward
+  // once, then invert by binary search — instead of a 30-step bisection per bin.
+  const SKY_M=480, skyTh=new Float64Array(SKY_M+1);
+  function skyLUT(){
+    const base=hourToTheta(0);
+    for(let k=0;k<=SKY_M;k++) skyTh[k]=k===SKY_M?TAU:hourToTheta(k*24/SKY_M)-base;
+    const lut=[new Float32Array(SKY_N),new Float32Array(SKY_N),new Float32Array(SKY_N)];
+    for(let i=0;i<SKY_N;i++){
+      const a=((((i+.5)/SKY_N*TAU-base)%TAU)+TAU)%TAU;
+      let lo=0,hi=SKY_M; while(hi-lo>1){ const m=(lo+hi)>>1; if(skyTh[m]<=a) lo=m; else hi=m; }
+      const span=skyTh[hi]-skyTh[lo], h=(lo+(span>1e-9?(a-skyTh[lo])/span:0))*24/SKY_M;
+      const w=skyWeights(h%24); lut[0][i]=w[0]; lut[1][i]=w[1]; lut[2][i]=w[2];
+    }
+    return lut;
+  }
+  // the dial's screen matrix only changes with layout; mid-morph steps reuse it rather than
+  // forcing a synchronous style recalc of the freshly rebuilt SVG every frame
+  let dialCTM=null;
+  function paintSky(draft){
+    const dpr=draft?1:Math.min(2,window.devicePixelRatio||1), W=innerWidth, H=innerHeight;
+    if(sky.width!==Math.round(W*dpr)||sky.height!==Math.round(H*dpr)){ sky.width=Math.round(W*dpr); sky.height=Math.round(H*dpr); }
+    sctx.setTransform(dpr,0,0,dpr,0,0); sctx.clearRect(0,0,W,H);
+    const m=(draft&&dialCTM)||(dialCTM=dial.getScreenCTM()); if(!m) return;
+    const cx=m.a*CX+m.c*CY+m.e, cy=m.b*CX+m.d*CY+m.f, cardR=CARD_R*m.a;
+    const night=document.body.classList.contains("night");
+    const geo=(draft&&skyGeo)||skyGeometry(W,H,cx,cy,cardR,night), lut=skyLUT();
+    sctx.globalCompositeOperation= night ? "source-over" : "multiply";
+    for(const L of geo.layers){
+      const lk=lut[L.k], xs=L.xs, ys=L.ys, bins=L.bins, ws=L.ws, rk=SKY_S*L.max;
+      sctx.fillStyle=L.color; sctx.beginPath();
+      for(let i=0;i<xs.length;i++){
+        let w=lk[bins[i]]*ws[i]; if(L.stars&&w>1) w=1;
+        const r=rk*Math.sqrt(w);
+        if(r<.3) continue;
+        sctx.moveTo(xs[i]+r,ys[i]); sctx.arc(xs[i],ys[i],r,0,TAU);
       }
       sctx.fill();
     }
@@ -1108,8 +1152,9 @@
       if(id!==frameAnim) return;
       const k=clamp((now-t0)/dur,0,1);
       frameK=k<1?1-Math.pow(1-k,3):1; if(k>=1) frameFrom=frame;
-      drawAll();
-      if(k<1) requestAnimationFrame(step);
+      // mid-morph: only the frame-dependent layers, and a 1x draft sky; the last step is full
+      if(k<1){ drawTrack(); drawTapes(); drawSpent(); drawBodies(); drawNow(); paintSky(true); requestAnimationFrame(step); }
+      else drawAll();
     })(t0);
   }
   frameNav.addEventListener("pointerdown",(e)=>{ const bt=e.target.closest("button"); if(!bt||drag) return;
@@ -1153,7 +1198,7 @@
   syncFrames();
   drawAll();
   save();
-  window.addEventListener("resize",()=>paintSky());
+  window.addEventListener("resize",()=>{ drawCard(); paintSky(); });
   if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>render());
   document.addEventListener("gesturestart",(e)=>e.preventDefault());
   document.addEventListener("contextmenu",(e)=>e.preventDefault());
