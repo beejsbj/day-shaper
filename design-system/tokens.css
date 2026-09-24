@@ -72,5 +72,6 @@
   --ease-springy:cubic-bezier(.34,1.6,.5,1);
   --dur-sky:1.2s;                        /* ambient crossfades        */
   --dur-touch:.22s;                      /* press/lift feedback       */
-  --dur-settle:650ms;                    /* now-on-top rotation       */
+  --dur-settle:700ms;                    /* frame morph (noon/sun/now) */
+  --dur-bloom:440ms;                     /* picker bubble bloom, 26ms stagger */
 }

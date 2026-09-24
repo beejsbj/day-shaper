@@ -41,7 +41,7 @@
   body{
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif;
     color:var(--ink);
-    touch-action:none;user-select:none;-webkit-user-select:none;
+    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
     position:fixed;inset:0;
     /* day/night cycle laid out spatially: conic centered on the dial, noon-top
        matches daylight-up/night-down/sunrise-left/sunset-right. JS rebuilds the
@@ -84,18 +84,16 @@
   header h1{font-size:25px;font-weight:300;letter-spacing:-.01em;line-height:1.15;margin-top:3px;
     color:var(--ink);}
   header .sub{font-size:11.5px;color:var(--ink);opacity:.6;margin-top:3px;font-weight:300;}
-  /* tighter header + tray on short viewports (e.g. 360x740-class phones) so the oval keeps its margins */
+  /* tighter header on short viewports (e.g. 360x740-class phones) so the oval keeps its margins */
   @media (max-height:760px){
     header{padding-top:calc(8px + env(safe-area-inset-top));}
     header .k{font-size:9.5px;}
     header h1{font-size:23px;margin-top:2px;}
     header .sub{font-size:10.5px;margin-top:3px;}
-    #trayHint{font-size:8.5px;}
-    #tray{padding-top:2px;}
     svg#clock{max-height:calc(100% - 22px);}
   }
 
-  #clockWrap{flex:1 1 auto;width:100%;display:flex;align-items:flex-start;justify-content:center;position:relative;
+  #clockWrap{flex:1 1 auto;width:100%;display:flex;align-items:center;justify-content:center;position:relative;
     min-height:0;padding:18px 0 4px;}
   svg#clock{display:block;width:100%;height:100%;overflow:visible;}
 
@@ -110,43 +108,25 @@
   #stats span.warn{color:var(--delete-red);opacity:.95;font-weight:400;}
   @media (max-width:340px){ #stats{flex-direction:column;gap:2px;} }
 
-  /* now-orientation toggle: a tactile clay pill, not a form control */
-  #nowToggle{
+  /* frame switch: three clay segments (noon · sun · now) with a sliding knob */
+  #frameSwitch{
     position:absolute;top:calc(14px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));z-index:8;
-    display:flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;
-    border-radius:22px;cursor:pointer;
-    transform:scale(.88);transform-origin:top right;
+    display:grid;grid-template-columns:repeat(3,1fr);padding:3px;border-radius:22px;
     background:var(--surface);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 4px 14px var(--shadow);
-    transition:transform .3s cubic-bezier(.34,1.6,.5,1);
   }
-  #nowToggle:active{transform:scale(.94);}
-  #nowToggle .knob{width:16px;height:16px;border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #fff, #cfdcec);
-    box-shadow:0 1px 3px rgba(90,110,150,.35);transition:transform .35s cubic-bezier(.34,1.6,.5,1);}
-  #nowToggle.on .knob{transform:scale(1.1);background:radial-gradient(circle at 35% 30%,#fff,var(--sun));}
-  #nowToggle .lbl{font-size:9.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--ink);opacity:.8;white-space:nowrap;}
+  #frameSwitch .knob{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/3);border-radius:18px;
+    background:radial-gradient(120% 140% at 35% 20%, #fff, #e7eef7 60%, #cfdcec);
+    box-shadow:0 1px 4px rgba(90,110,150,.35);
+    transition:transform .38s cubic-bezier(.34,1.6,.5,1);}
+  #frameSwitch[data-frame="sun"] .knob{transform:translateX(100%);background:radial-gradient(120% 140% at 35% 20%, #fff8e0, #ffe6a8 60%, var(--sun));}
+  #frameSwitch[data-frame="now"] .knob{transform:translateX(200%);}
+  #frameSwitch button{position:relative;z-index:1;border:0;background:none;font:inherit;cursor:pointer;
+    padding:6px 9px;min-width:42px;font-size:9.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink);opacity:.62;transition:opacity .2s ease, color .3s ease;}
+  #frameSwitch button.on{opacity:1;color:#4a6486;}
 
-  /* stone tray */
-  #tray{flex:0 0 auto;width:100%;padding:6px 12px calc(12px + env(safe-area-inset-bottom));
-    display:flex;gap:9px;justify-content:center;align-items:flex-end;z-index:6;position:relative;}
-  .stone{position:relative;width:58px;height:58px;
-    border-radius:50%;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    box-shadow:inset 0 2px 6px rgba(255,255,255,.55), inset 0 -5px 10px rgba(70,90,130,.22), 0 6px 16px var(--shadow);
-    transition:transform .22s cubic-bezier(.34,1.7,.5,1), opacity .2s ease;
-    cursor:grab;color:#fff;touch-action:none;}
-  .stone:active{cursor:grabbing;}
-  .stone.lifting{opacity:.3;transform:scale(.88);}
-  .stone .emo{font-size:19px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18));}
-  .stone .nm{font-size:8.5px;font-weight:600;letter-spacing:.05em;margin-top:2px;text-transform:uppercase;
-    text-shadow:0 1px 2px rgba(40,60,100,.35);}
-  #trayHint{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:2px;
-    font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);opacity:.45;
-    font-weight:400;white-space:nowrap;pointer-events:none;}
-
-  /* ghost lump that follows the thumb while dragging a stone up */
+  /* lump that follows the thumb while a section is lifted off the ring and carried */
   #ghost{position:fixed;z-index:30;width:66px;height:66px;margin:-33px 0 0 -33px;
     border-radius:50%;pointer-events:none;display:none;
     align-items:center;justify-content:center;font-size:22px;color:#fff;
@@ -165,8 +145,35 @@
     font-weight:400;margin-top:2px;}
   #readout.danger .t{color:#ffb49c;}
 
-  /* delete affordance: hub glows red once a lifted block has been dragged into it */
-  #clockWrap.armDelete #clock{filter:saturate(1.06);}
+  /* let-go affordance: the orb glows ember once a carried section is dragged into the hub */
+  #clockWrap.armDelete #gTrack ellipse{filter:drop-shadow(0 0 22px rgba(224,120,86,.85)) !important;}
+  #ghost.doomed{transform:scale(.72);box-shadow:0 0 0 3px var(--delete-red), 0 10px 24px var(--shadow);}
+
+  /* bubble picker: symbols bloom out of the section toward the hub */
+  #picker{position:fixed;inset:0;z-index:50;display:none;}
+  #picker.live{display:block;}
+  #picker .scrim{position:absolute;inset:0;background:rgba(20,28,60,.16);opacity:0;transition:opacity .22s ease;}
+  #picker.open .scrim{opacity:1;}
+  .bubble{position:absolute;width:48px;height:48px;margin:-24px 0 0 -24px;border:0;border-radius:50%;padding:0;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font:inherit;
+    box-shadow:inset 0 2px 6px rgba(255,255,255,.55), inset 0 -5px 10px rgba(70,90,130,.22), 0 6px 16px var(--shadow);
+    opacity:0;transform:translate(var(--fx),var(--fy)) scale(.2);
+    transition:transform .44s cubic-bezier(.34,1.56,.5,1) var(--d), opacity .16s ease var(--d);}
+  #picker.open .bubble{opacity:1;transform:none;}
+  #picker.open .bubble:active{transform:scale(.88);transition-delay:0s;}
+  .bubble .emo{font-size:20px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18));}
+  .bubble .nm{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;
+    font-size:8px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;
+    color:#fff;text-shadow:0 1px 3px rgba(30,40,80,.6);pointer-events:none;}
+  .bubble.cur{box-shadow:inset 0 2px 6px rgba(255,255,255,.55), inset 0 -5px 10px rgba(70,90,130,.22),
+    0 0 0 2.5px #fff, 0 0 0 6px var(--lift-glow), 0 6px 16px var(--shadow);}
+  .bubble.del{background:var(--surface);color:var(--delete-red);}
+  .bubble.del .emo{font-size:16px;font-weight:600;filter:none;}
+
+  /* quiet gesture legend where the tray used to sit */
+  #hint{flex:0 0 auto;padding:4px 16px calc(14px + env(safe-area-inset-bottom));z-index:3;
+    font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);opacity:.45;white-space:nowrap;
+    text-align:center;pointer-events:none;text-shadow:var(--ink-halo);line-height:1.8;}
 </style>
 </head>
 <body>
@@ -178,12 +185,17 @@
   <header>
     <div class="k">Day&nbsp;Shaper</div>
     <h1 id="greet">a what-if day</h1>
-    <div class="sub" id="dateline">push a block · watch it lift, collide, cascade</div>
+    <div class="sub" id="dateline">draw on the ring · lift to reorder</div>
   </header>
-  <div id="nowToggle"><span class="knob"></span><span class="lbl">Now&nbsp;on&nbsp;top</span></div>
+  <div id="frameSwitch" data-frame="noon" role="radiogroup" aria-label="Dial frame">
+    <span class="knob"></span>
+    <button data-f="noon" role="radio" title="Noon on top">Noon</button>
+    <button data-f="sun" role="radio" title="Sunrise left · sunset right">Sun</button>
+    <button data-f="now" role="radio" title="Now on top — the sky turns with you">Now</button>
+  </div>
   <div id="clockWrap">
     <div id="stats"><span id="statShaped"></span><span id="statFree"></span></div>
-    <svg id="clock" viewBox="0 0 390 470" preserveAspectRatio="xMidYMin meet">
+    <svg id="clock" viewBox="0 0 390 470" preserveAspectRatio="xMidYMid meet">
       <defs>
         <filter id="goo">
           <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b"/>
@@ -237,9 +249,10 @@
       <g id="gNow"></g>
     </svg>
   </div>
-  <div id="tray"><div id="trayHint">drag a stone up onto the ring</div></div>
+  <div id="hint">draw on the ring · tap to name · hold to carry</div>
 </div>
 <div id="ghost"></div>
+<div id="picker"><div class="scrim"></div></div>
 <div id="readout"><div class="t">—</div><div class="l">drag along the ring</div></div>
 <div id="rotateHint">turn your phone upright<br>— the day is shaped in portrait —</div>
 
@@ -253,18 +266,55 @@
   /* ---------------- geometry: the DIAL (a circle; the parametric math tolerates A!==B) ---------------- */
   const CX=195, CY=235, A=150, B=150, RING_W=32; // A===B: the dial is a circle now
   const LANE_LIFT=20; /* how far the conflict lane sits outside the home ring */
-  const BASE_ROT=12; // resting default: noon at top (0 would put midnight at top)
-  let viewRotation=BASE_ROT; // hours; rotates the frame only (now-on-top).
-  function hourToTheta(t){ return ((t+viewRotation)/24)*Math.PI*2; }
+  /* ---------------- FRAMES: how the 24h day is laid around the dial ----------------
+     A frame is a monotone map hour -> angle (radians, 0 = top, clockwise) over
+     t in [0,24], rising by exactly 2PI. Every draw and hit-test goes through it,
+     so the cascade engine never knows which frame is showing.
+       noon — uniform, noon on top (the resting default)
+       sun  — WARPED: sunrise pinned left, sunset pinned right, daylight arcs over
+              the top half and night pools in the bottom half. An hour of daylight
+              and an hour of night get different arc lengths unless it's equinox.
+       now  — uniform, now on top; the sky + orb rotate with it (see buildSkyConic),
+              so whatever phase you are in is always overhead. */
+  const TAU=Math.PI*2;
+  const FRAMES=["noon","sun","now"];
+  let NOW=0; // cached hour-of-day, refreshed by render/housekeeping (not mid-drag)
+  function frameTheta(frame,t){
+    if(frame==="now") return ((t-NOW)/24)*TAU;
+    if(frame==="sun"){
+      const sr=sun.sunrise, D=((sun.sunset-sun.sunrise)%24+24)%24;
+      if(sun.polar || D<1 || D>23) return frameTheta("noon",t); // no horizon to pin
+      const u=t>=sr ? t-sr : t-sr+24;
+      const th=u<D ? -Math.PI/2 + (u/D)*Math.PI : Math.PI/2 + ((u-D)/(24-D))*Math.PI;
+      return t<sr ? th-TAU : th; // keep it continuous across t=sunrise
+    }
+    return ((t+12)/24)*TAU;
+  }
+  let frame="noon", frameFrom="noon", frameK=1; // frameK<1 while morphing between frames
+  function hourToTheta(t){
+    const b=frameTheta(frame,t);
+    if(frameK>=1) return b;
+    let a=frameTheta(frameFrom,t);
+    // align the two maps within half a turn so the blend rotates the short way
+    const off=Math.round((frameTheta(frame,0)-frameTheta(frameFrom,0))/TAU)*TAU;
+    a+=off;
+    return a+(b-a)*frameK;
+  }
   function ptAt(t, radScale=1){
     const th=hourToTheta(t);
     return { x: CX + A*radScale*Math.sin(th), y: CY - B*radScale*Math.cos(th) };
   }
+  // inverse by bisection: the map is monotone, so this is exact to ~1s in 30 steps
+  function thetaToHour(th){
+    const base=hourToTheta(0);
+    const target=base+(((th-base)%TAU)+TAU)%TAU;
+    let lo=0,hi=24;
+    for(let i=0;i<32;i++){ const m=(lo+hi)/2; if(hourToTheta(m)<target) lo=m; else hi=m; }
+    return ((lo+hi)/2)%24;
+  }
   function ptToHour(px,py){
     const nx=(px-CX)/A, ny=(py-CY)/B;
-    let th=Math.atan2(nx, -ny); if(th<0) th+=Math.PI*2;
-    let t=(th/(Math.PI*2))*24 - viewRotation;
-    return ((t%24)+24)%24;
+    return thetaToHour(Math.atan2(nx, -ny));
   }
   function ringDist(px,py){ return Math.hypot((px-CX)/A,(py-CY)/B); }
   const SNAP=0.25;
@@ -278,7 +328,9 @@
   /* ---------------- state / persistence ---------------- */
   const LS_BLOCKS="dayshaper.clay.blocks.v2";
   const LS_PALETTE="dayshaper.clay.palette.v3";
-  const LS_NOWTOP="dayshaper.clay.nowtop.v2";
+  const LS_NOWTOP="dayshaper.clay.nowtop.v2"; // legacy boolean, read once for migration
+  const LS_FRAME="dayshaper.clay.frame.v1";
+  const LS_LASTTYPE="dayshaper.clay.lasttype.v1";
   const DEFAULT_PALETTE=[
     {id:"sleep",name:"Sleep",emoji:"🌙",c0:"#9fadde",c1:"#7080c0"},
     {id:"work", name:"Work", emoji:"✎", c0:"#f2b98c",c1:"#dd9260"},
@@ -288,13 +340,20 @@
   ];
   let palette=sanitizePalette(load(LS_PALETTE,DEFAULT_PALETTE));
   let blocks=sanitizeBlocks(load(LS_BLOCKS,seedBlocks()));
-  let nowOnTop=load(LS_NOWTOP,false)===true;
+  {
+    const f=load(LS_FRAME,null);
+    frame=FRAMES.includes(f) ? f : (load(LS_NOWTOP,false)===true ? "now" : "noon");
+    frameFrom=frame;
+  }
+  let lastType=load(LS_LASTTYPE,"work");
+  if(!palette.find(p=>p.id===lastType)) lastType=palette[0].id;
 
   function load(key,fb){ try{const v=JSON.parse(localStorage.getItem(key));return v==null?fb:v;}catch(e){return fb;} }
   function save(){
     localStorage.setItem(LS_BLOCKS,JSON.stringify(blocks.map(b=>({id:b.id,type:b.type,start:b.start,len:b.len}))));
     localStorage.setItem(LS_PALETTE,JSON.stringify(palette));
-    localStorage.setItem(LS_NOWTOP,JSON.stringify(nowOnTop));
+    localStorage.setItem(LS_FRAME,JSON.stringify(frame));
+    localStorage.setItem(LS_LASTTYPE,JSON.stringify(lastType));
   }
   function seedBlocks(){ return [
     {id:uid(),type:"sleep",start:0,   len:6.5},
@@ -340,8 +399,8 @@
   /* ---------------- CASCADE ENGINE: single constraint solver ----------------
      resolve(blocks, i, desiredStart, originMap) is the ONLY function that may
      mutate block.start. blocks are kept sorted by start; sum(len) <= 24 is a
-     precondition guaranteed by every caller (placeBlock rejects if it would
-     violate this; resize callers cap len before calling).
+     precondition guaranteed by every caller (draw is bounded by its gap,
+     carry only re-inserts an existing block; resize callers cap len before calling).
      originMap (optional Map id->start) supplies each block's pre-drag start,
      used so downstream/upstream blocks fill gaps before they get pushed.
      Postcondition (enforced below): every block has 0<=start, start+len<=24,
@@ -434,22 +493,21 @@
     dusk: ["#8a97be","#a68ba2","#dcae86"],
   };
   const mix3=(a,b,t)=>a.map((c,i)=>mix(c,b[i],t));
-  // hour -> conic angle: noon-top means angle 0deg (top) = hour 12, clockwise = increasing hour,
-  // matching hourToTheta's convention (theta 0 at top, clockwise) at the BASE_ROT=12 resting frame.
-  const hourToConicDeg=(h)=>(((h+12)%24)+24)%24/24*360;
+  // unwrapped hour -> angle through the live frame (h may run past 24)
+  const thetaUnwrapped=(h)=>{ const k=Math.floor(h/24); return hourToTheta(h-24*k)+TAU*k; };
   /* Build the background as a conic gradient centered on the dial so the page
-     mirrors the dial spatially: day arc up top, night arc at bottom, dawn band
-     on the left flank (sunrise), dusk band on the right flank (sunset). Bands
-     are wide/soft (large angular spread per stop) so it reads as atmosphere,
-     not a pie chart. This does not touch the cascade engine or interactions —
-     purely a background paint keyed off sun.sunrise/sun.sunset. */
+     mirrors the dial spatially: the day arc of the sky sits behind the day arc of
+     the ring, dawn behind sunrise, dusk behind sunset. Stops are placed in HOUR
+     space and mapped through the same frame as the dial, so the sky rotates (now)
+     or warps (sun) with it and never disagrees with the ring. Bands are wide/soft
+     so it reads as atmosphere, not a pie chart. */
   // conic center = the dial's live screen center (the dial is pinned toward the
   // top of clockWrap now, not mid-viewport), so the sky pivots exactly on the hub
   function conicCenter(){
     try{
       const r=clock.getBoundingClientRect();
       if(!r.height||!r.width) return "50% 42%";
-      // preserveAspectRatio="xMidYMin meet": drawn content is scaled uniformly,
+      // preserveAspectRatio="xMidYMid meet": drawn content is scaled uniformly,
       // x-centered in the element box, pinned to its top — not stretched to fill it
       const s=Math.min(r.width/390, r.height/470);
       const cx=r.left + r.width/2 + (CX-195)*s;
@@ -458,39 +516,35 @@
     }catch(_){ return "50% 42%"; }
   }
   function buildSkyConic(){
-    const sr=sun.sunrise, ss=sun.sunset, at=conicCenter();
-    if(sun.polar==="day"){
-      return "conic-gradient(from 0deg at "+at+", "+SKY.day[0]+" 0deg, "+SKY.day[1]+" 180deg, "+SKY.day[0]+" 360deg)";
+    const sr=sun.sunrise, at=conicCenter();
+    const deg=(th)=>th*180/Math.PI;
+    if(sun.polar){
+      const P=sun.polar==="day"?SKY.day:SKY.night;
+      return "conic-gradient(from 0deg at "+at+", "+P[0]+" 0deg, "+P[1]+" 180deg, "+P[0]+" 360deg)";
     }
-    if(sun.polar==="night"){
-      return "conic-gradient(from 0deg at "+at+", "+SKY.night[0]+" 0deg, "+SKY.night[1]+" 180deg, "+SKY.night[0]+" 360deg)";
-    }
-    const srDeg=hourToConicDeg(sr), ssDeg=hourToConicDeg(ss);
-    const bandW=18; // degrees either side of sunrise/sunset for the dawn/dusk band — wide + soft
-    // increasing conic angle = increasing hour (noon at 0deg, midnight at 180deg):
-    // afternoon day fades through dusk at ssDeg into night, night through dawn at
-    // srDeg back into morning day. Warm horizon colors hug the sun crossing itself.
+    const D=((sun.sunset-sr)%24+24)%24, H0=sr+D/2; // start the sweep at solar noon
+    const ss=sr+D, sr2=sr+24, bw=1.2, bw2=2.64;    // band half-widths in hours
     const stops=[
-      [0,          SKY.day[0]],
-      [ssDeg-bandW*2.2, SKY.day[1]],
-      [ssDeg-bandW,     SKY.dusk[0]],
-      [ssDeg,           SKY.dusk[1]],
-      [ssDeg+bandW,     SKY.dusk[2]],
-      [ssDeg+bandW*2.2, SKY.night[2]],
-      [180,             SKY.night[1]],
-      [srDeg-bandW*2.2, SKY.night[2]],
-      [srDeg-bandW,     SKY.dawn[2]],
-      [srDeg,           SKY.dawn[1]],
-      [srDeg+bandW,     SKY.dawn[0]],
-      [srDeg+bandW*2.2, SKY.day[1]],
-      [360,             SKY.day[0]],
+      [H0,       SKY.day[0]],
+      [ss-bw2,   SKY.day[1]],
+      [ss-bw,    SKY.dusk[0]],
+      [ss,       SKY.dusk[1]],
+      [ss+bw,    SKY.dusk[2]],
+      [ss+bw2,   SKY.night[2]],
+      [H0+12,    SKY.night[1]],
+      [sr2-bw2,  SKY.night[2]],
+      [sr2-bw,   SKY.dawn[2]],
+      [sr2,      SKY.dawn[1]],
+      [sr2+bw,   SKY.dawn[0]],
+      [sr2+bw2,  SKY.day[1]],
+      [H0+24,    SKY.day[0]],
     ];
-    // normalize/clamp/sort so overlapping bands (short days/nights) never invert order
-    let norm=stops.map(([d,c])=>[clamp(d,0,360),c]);
-    norm.sort((a,b)=>a[0]-b[0]);
-    for(let i=1;i<norm.length;i++) if(norm[i][0]<norm[i-1][0]) norm[i][0]=norm[i-1][0];
-    const parts=norm.map(([d,c])=>c+" "+d.toFixed(1)+"deg");
-    return "conic-gradient(from 0deg at "+at+", "+parts.join(", ")+")";
+    // clamp into one turn and keep order so short days/nights never invert the bands
+    let prev=H0;
+    const th0=thetaUnwrapped(H0);
+    const parts=stops.map(([h,c])=>{ h=clamp(Math.max(h,prev),H0,H0+24); prev=h;
+      return c+" "+deg(thetaUnwrapped(h)-th0).toFixed(1)+"deg"; });
+    return "conic-gradient(from "+deg(th0).toFixed(1)+"deg at "+at+", "+parts.join(", ")+")";
   }
   function applySkyGradient(){
     const t=nowHour(), sr=sun.sunrise, ss=sun.sunset, W=0.9;
@@ -569,16 +623,22 @@
     // the soft heart of the dial: a volumetric orb floating in the hub, half sun-side
     // (porcelain, top) half moon-side (deep indigo, bottom), feathered at the seam —
     // reads as "half day, half night" regardless of the current sky phase.
+    // the day half faces solar noon wherever the frame puts it (top in noon/sun,
+    // swinging round in now) so the orb agrees with the sky behind it
+    const D=((sun.sunset-sun.sunrise)%24+24)%24;
+    const noonDeg=sun.polar?0:hourToTheta((sun.sunrise+D/2)%24)*180/Math.PI;
+    const og=$("orbGradDual"); if(og) og.setAttribute("gradientTransform","rotate("+noonDeg.toFixed(1)+" .5 .5)");
     const orb=el("ellipse",{cx:CX,cy:CY,rx:100,ry:100,fill:"url(#orbGradDual)"});
     orb.style.filter="drop-shadow(0 18px 30px var(--shadow))";
     gTrack.appendChild(orb);
     // tiny garnish: a sun disc high on the day half, a crescent low on the night half
-    const orbSun=el("circle",{cx:CX-28,cy:CY-58,r:6,fill:"var(--sun)",opacity:.55});
-    gTrack.appendChild(orbSun);
+    const garnish=el("g",{transform:"rotate("+noonDeg.toFixed(1)+" "+CX+" "+CY+")"});
+    garnish.appendChild(el("circle",{cx:CX-28,cy:CY-58,r:6,fill:"var(--sun)",opacity:.55}));
     const moonG=el("g",{opacity:.5});
     moonG.appendChild(el("circle",{cx:CX+24,cy:CY+64,r:5.5,fill:"var(--moon)"}));
     moonG.appendChild(el("circle",{cx:CX+27,cy:CY+62,r:4.6,fill:"#171d42"}));
-    gTrack.appendChild(moonG);
+    garnish.appendChild(moonG);
+    gTrack.appendChild(garnish);
     gTrack.appendChild(el("path",{d:ellipseArcPath(0,24,rOut+0.05,rIn-0.05),fill:"var(--ring-night)",opacity:.92}));
     if(sun.polar!=="night"){
       gTrack.appendChild(el("path",{d:ellipseArcPath(sun.sunrise,sun.sunset,rOut+0.05,rIn-0.05),
@@ -757,19 +817,6 @@
   const hapticTick=()=>{ if(navigator.vibrate) navigator.vibrate(3); };  // tiny felt tick for 15-min snaps
   const hapticWarn=()=>{ if(navigator.vibrate) navigator.vibrate([12,30,12]); }; // arm/commit delete
 
-  /* ---------------- tray stones ---------------- */
-  function buildTray(){
-    const tray=$("tray");
-    tray.querySelectorAll(".stone").forEach(n=>n.remove());
-    for(const p of palette){
-      const s=document.createElement("div"); s.className="stone"; s.dataset.type=p.id;
-      s.style.background="radial-gradient(120% 120% at 35% 25%, "+lighten(p.c0,.2)+", "+p.c0+" 62%, "+p.c1+" 100%)";
-      s.innerHTML='<span class="emo">'+p.emoji+'</span><span class="nm">'+p.name+'</span>';
-      s.addEventListener("pointerdown",(e)=>startStoneDrag(e,p,s));
-      tray.appendChild(s);
-    }
-  }
-
   /* ---------------- SVG point mapping ---------------- */
   const ptSVG=(()=>{const pt=clock.createSVGPoint();return (e)=>{
     pt.x=e.clientX;pt.y=e.clientY;const m=clock.getScreenCTM().inverse();
@@ -793,36 +840,76 @@
     READ.querySelector(".l").textContent=label;READ.classList.add("show");}
   const hideRead=()=>READ.classList.remove("show");
 
-  /* ---------------- interactions on the clock ---------------- */
-  let drag=null;
+  /* ---------------- interactions on the clock ----------------
+     The ring is the whole creation surface (BJS-275) — no tray:
+       empty ring, drag      -> DRAW a new section: it grows under the finger in
+                                15m snaps, bounded by the free gap it started in
+       section, tap          -> bubble PICKER to change its symbol (or let it go)
+       section edge, drag    -> RESIZE (cascade pushes neighbours on contact)
+       section body, drag    -> MOVE along the ring (slide-push cascade)
+       section, hold — or pull it off the ring
+                             -> CARRY: it leaves the sequence and re-inserts wherever
+                                it's dropped; neighbours part live to make room.
+                                Drop it on the hub to let it go.
+       hub, drag             -> spin the whole day */
+  let drag=null, picker=null;
   const angDist=(a,b)=>{let d=Math.abs(((a-b)%24+24)%24);return Math.min(d,24-d);};
+  const TAP_PX=7, HOLD_MS=380, LIFT_IN=0.66, LIFT_OUT=1.32, HUB_DELETE=0.42;
+  const byId=(id)=>blocks.find(x=>x.id===id);
+
+  // the free stretch of ring around hour t (t is not inside any block)
+  function gapAround(t){
+    let lo=0,hi=24;
+    for(const b of blocks){ const e=b.start+b.len;
+      if(e<=t+1e-9) lo=Math.max(lo,e);
+      if(b.start>=t-1e-9) hi=Math.min(hi,b.start); }
+    return {lo,hi};
+  }
 
   clock.addEventListener("pointerdown",(e)=>{
-    if(drag||stoneDrag) return;
+    if(drag||picker) return;
     e.preventDefault(); try{clock.setPointerCapture(e.pointerId);}catch(_){/* stale/synthetic pointer */}
     const p=ptSVG(e), r=ringDist(p.x,p.y), rawT=ptToHour(p.x,p.y);
+    const base={pid:e.pointerId,x0:e.clientX,y0:e.clientY,lastX:e.clientX,lastY:e.clientY,active:false};
 
-    if(r<0.55){ drag={mode:"hub", lastT:rawT}; haptic(); return; }
+    if(r<0.55){ drag={...base,mode:"hub",lastT:rawT,active:true}; haptic(); return; }
+    if(Math.abs(r-1)>=0.4) return;
 
-    if(Math.abs(r-1)<0.4){
-      const idx=blockIndexAtHour(rawT);
-      if(idx>=0){
-        const b=blocks[idx], startH=b.start, endH=b.start+b.len;
-        const dS=angDist(rawT,startH), dE=angDist(rawT,endH), grab=0.55;
-        if(dS<grab && dS<=dE){ drag={mode:"resize",idx,edge:"start"}; }
-        else if(dE<grab){ drag={mode:"resize",idx,edge:"end"}; }
-        else { drag={mode:"move",idx,grabOffset:rawT-b.start}; }
-        // snapshot original starts so the ghost cascade can show "where this came from" + delta
-        drag.origin=new Map(blocks.map(x=>[x.id,x.start]));
-        bump(b.id,1.2); haptic(); render(); updateRead();
-      }
+    const idx=blockIndexAtHour(rawT);
+    if(idx<0){
+      const {lo,hi}=gapAround(rawT);
+      if(hi-lo<SNAP){ hapticWarn(); return; }
+      const anchor=clamp(snap(rawT),lo,hi);
+      drag={...base,mode:"draw",active:true,anchor,lo,hi,cur:anchor,lastRaw:rawT,unw:rawT,newId:null,wall:null};
+      hapticTick(); showRead(fmt(anchor),"draw along the ring");
+      return;
     }
+    const b=blocks[idx], grab=Math.min(0.55,b.len*0.3);
+    const dS=angDist(rawT,b.start), dE=angDist(rawT,b.start+b.len);
+    let mode="move", edge=null;
+    if(dS<grab && dS<=dE){ mode="resize"; edge="start"; }
+    else if(dE<grab){ mode="resize"; edge="end"; }
+    // snapshot original starts so the ghost cascade can show "where this came from" + delta
+    drag={...base,mode,edge,id:b.id,grabOffset:rawT-b.start,origin:new Map(blocks.map(x=>[x.id,x.start]))};
+    // hold still on a section -> lift it off the ring to carry
+    drag.hold=setTimeout(()=>{ if(drag && !drag.active && drag.id===b.id) startCarry(); },HOLD_MS);
+    bump(b.id,0.6);
   });
 
   window.addEventListener("pointermove",(e)=>{
-    if(!drag) return; e.preventDefault();
-    const p=ptSVG(e), rawT=ptToHour(p.x,p.y);
+    if(!drag||e.pointerId!==drag.pid) return; e.preventDefault();
+    drag.lastX=e.clientX; drag.lastY=e.clientY;
+    const p=ptSVG(e), rawT=ptToHour(p.x,p.y), r=ringDist(p.x,p.y);
 
+    if(!drag.active){
+      if(Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)<TAP_PX) return; // still a tap
+      drag.active=true; clearTimeout(drag.hold);
+      if(byId(drag.id)) bump(drag.id,1.2);
+      haptic();
+    }
+
+    if(drag.mode==="carry"){ carryMove(e,r,rawT); return; }
+    if(drag.mode==="draw"){ drawMove(rawT); return; }
     if(drag.mode==="hub"){
       let d=rawT-drag.lastT; d=((d+12)%24+24)%24-12;
       if(Math.abs(d)>0.001){
@@ -843,87 +930,176 @@
       return;
     }
 
-    const b=blocks[drag.idx]; if(!b) return;
+    const b=byId(drag.id); if(!b) return;
+    const idx=blocks.indexOf(b);
 
-    // radial pull toward the hub arms delete (dragging a block "off the ring" and inward)
-    const r=ringDist(p.x,p.y);
-    if(drag.mode==="move"){
-      const wasArmed=drag.armDelete;
-      drag.armDelete = r<0.42;
-      $("clockWrap").classList.toggle("armDelete", drag.armDelete);
-      if(drag.armDelete){
-        if(!wasArmed) hapticWarn(); // fire once on the arm transition, not every move
-        setLift(b.id,0); clearNeighborLift();
-        READ.classList.add("danger");
-        showRead("release to delete", typeOf(b.type).name+" · drag back onto the ring to keep it");
-        render();
-        return;
-      } else {
-        READ.classList.remove("danger");
-      }
-    }
+    // pulled clear of the ring (inward toward the hub, or outward) -> lift and carry
+    if(drag.mode==="move" && (r<LIFT_IN || r>LIFT_OUT)){ startCarry(); carryMove(e,r,rawT); return; }
 
     if(drag.mode==="move"){
       const preStart=b.start;
-      const desired=rawT-drag.grabOffset;
       const beforeStarts=new Map(blocks.map(x=>[x.id,x.start]));
-      resolve(blocks,drag.idx,desired,drag.origin);
+      resolve(blocks,idx,rawT-drag.grabOffset,drag.origin);
       if(Math.abs(b.start-preStart)>1e-9) hapticTick(); // felt snap tick, not just seen
-      const hit=detectHit(beforeStarts,b.id);
-      applyCollisionLift(b.id,hit);
+      applyCollisionLift(b.id,detectHit(beforeStarts,b.id));
       bump(b.id,0.25);
       render(); updateRead();
     }
     else if(drag.mode==="resize"){
       const beforeStarts=new Map(blocks.map(x=>[x.id,x.start]));
-      let hit=null;
+      // cap growth at what's left of the day given every OTHER block's len
+      const othersLen=blocks.reduce((s,x)=>x===b?s:s+x.len,0);
       if(drag.edge==="end"){
-        let nl=snap(rawT-b.start);
-        if(nl<SNAP)nl=SNAP;
-        // cap growth at what's left of the day given every OTHER block's len
-        const othersLen=blocks.reduce((s,x)=>x===b?s:s+x.len,0);
+        let nl=Math.max(SNAP,snap(rawT-b.start));
         nl=Math.min(nl,24-othersLen,24-b.start);
         if(nl!==b.len) hapticTick();
         b.len=nl;
-        // fixed edge is start; resolve keeps start put, forward pass pushes downstream on contact
-        resolve(blocks,drag.idx,b.start,drag.origin);
-        hit=detectHit(beforeStarts,b.id);
+        // fixed edge is start; forward pass pushes downstream on contact
+        resolve(blocks,idx,b.start,drag.origin);
       } else {
         const end=b.start+b.len;
-        let nl=snap(end-rawT);
-        if(nl<SNAP)nl=SNAP;
-        const othersLen=blocks.reduce((s,x)=>x===b?s:s+x.len,0);
+        let nl=Math.max(SNAP,snap(end-rawT));
         nl=Math.min(nl,24-othersLen,end);
         const ns=end-nl;
         b.len=nl;
-        // fixed edge is end; desired start is ns, backward pass pushes upstream on contact
-        resolve(blocks,drag.idx,ns,drag.origin);
+        // fixed edge is end; backward pass pushes upstream on contact
+        resolve(blocks,idx,ns,drag.origin);
         if(Math.abs(b.start-ns)>1e-9 || nl!==drag._lastLen) hapticTick();
         drag._lastLen=nl;
-        hit=detectHit(beforeStarts,b.id);
       }
-      applyCollisionLift(b.id,hit);
+      applyCollisionLift(b.id,detectHit(beforeStarts,b.id));
       bump(b.id,0.25);
       render(); updateRead();
     }
   },{passive:false});
 
-  window.addEventListener("pointerup",()=>{
-    if(!drag) return;
-    if(drag.mode==="move" && drag.armDelete){
-      const b=blocks[drag.idx];
-      if(b) deleteBlock(b.id);
-    } else if(drag.mode!=="hub" && blocks[drag.idx]){
-      bump(blocks[drag.idx].id,1.5);
+  /* ---- draw: the arc grows from where the finger landed, either direction ---- */
+  function drawMove(rawT){
+    let d=rawT-drag.lastRaw; d=((d+12)%24+24)%24-12; // unwrap so crossing 0/24 doesn't jump
+    drag.lastRaw=rawT; drag.unw+=d;
+    const want=snap(drag.unw), cur=clamp(want,drag.lo,drag.hi);
+    // meeting a neighbour: the arc stops there and the neighbour flinches once
+    const wall= want>drag.hi ? "hi" : want<drag.lo ? "lo" : null;
+    if(wall && wall!==drag.wall){
+      const edgeT= wall==="hi" ? drag.hi : drag.lo;
+      const nb=blocks.find(x=> wall==="hi" ? Math.abs(x.start-edgeT)<1e-9 : Math.abs(x.start+x.len-edgeT)<1e-9);
+      if(nb){ bump(nb.id,wall==="hi"?1:-1); hapticWarn(); }
     }
-    $("clockWrap").classList.remove("armDelete");
+    drag.wall=wall;
+    if(cur!==drag.cur) hapticTick();
+    drag.cur=cur;
+    const s0=Math.min(drag.anchor,cur), s1=Math.max(drag.anchor,cur), len=s1-s0;
+    let nb=drag.newId && byId(drag.newId);
+    if(len>=SNAP){
+      if(!nb){ nb={id:uid(),type:lastType,start:s0,len}; blocks.push(nb); drag.newId=nb.id; bump(nb.id,1.4); }
+      nb.start=s0; nb.len=len; sortBlocks();
+      showRead(fmt(s0)+"–"+fmt(s1), durText(len)+(wall?" · meets a neighbour":" · "+durText(freeHours())+" free"));
+    } else {
+      if(nb){ blocks.splice(blocks.indexOf(nb),1); delete springs[nb.id]; drag.newId=null; }
+      showRead(fmt(drag.anchor),"draw along the ring");
+    }
+    render();
+  }
+
+  /* ---- carry: lift a section out of the sequence and re-insert it on drop ---- */
+  const ghost=$("ghost"), clockWrap=$("clockWrap");
+  const moveGhost=(x,y)=>{ ghost.style.left=x+"px"; ghost.style.top=y+"px"; };
+  function startCarry(){
+    const b=byId(drag.id); if(!b) return;
+    clearTimeout(drag.hold);
+    // everyone back where they were before this gesture, then lift b out
+    for(const x of blocks){ const o=drag.origin.get(x.id); if(o!==undefined) x.start=o; }
+    sortBlocks();
+    drag.block=b; drag.rest=blocks.filter(x=>x!==b);
+    drag.restOrigin=new Map(drag.rest.map(x=>[x.id,x.start]));
+    drag.mode="carry"; drag.active=true; drag.slot=null; drag.armDelete=false;
+    clearNeighborLift(); setLift(b.id,1);
+    const ty=typeOf(b.type);
+    ghost.style.display="flex";
+    ghost.style.background="radial-gradient(120% 120% at 35% 25%, "+lighten(ty.c0,.2)+", "+ty.c0+" 62%, "+ty.c1+" 100%)";
+    ghost.textContent=ty.emoji;
+    moveGhost(drag.lastX,drag.lastY);
+    haptic(); render();
+    // it stays in its slot, lifted, until the finger actually travels
+    showRead(fmt(b.start)+"–"+fmt(b.start+b.len), ty.name+" · carry it anywhere · hub lets it go");
+  }
+  function carryMove(e,r,rawT){
+    moveGhost(e.clientX,e.clientY);
+    const b=drag.block, armed=r<HUB_DELETE;
+    if(armed!==drag.armDelete){
+      drag.armDelete=armed; clockWrap.classList.toggle("armDelete",armed);
+      ghost.classList.toggle("doomed",armed);
+      if(armed) hapticWarn();
+    }
+    if(armed){
+      // off the ring entirely: the day closes back to how it was without it
+      for(const x of drag.rest) x.start=drag.restOrigin.get(x.id);
+      blocks=drag.rest.slice(); drag.slot=null;
+      READ.classList.add("danger");
+      showRead("release to let go", typeOf(b.type).name+" · drag back out to keep it");
+      render(); return;
+    }
     READ.classList.remove("danger");
-    settleAllLifts();
-    drag=null; clear(gGhost); setTimeout(hideRead,600); save();
-  });
-  window.addEventListener("pointercancel",()=>{ if(drag){
-    $("clockWrap").classList.remove("armDelete"); READ.classList.remove("danger");
-    settleAllLifts(); drag=null; clear(gGhost); hideRead();save();} });
+    carryPlace(rawT);
+  }
+  function carryPlace(rawT){
+    const b=drag.block;
+    for(const x of drag.rest) x.start=drag.restOrigin.get(x.id);
+    const list=drag.rest.slice();
+    // slot = after every block whose middle is behind the finger
+    let idx=0; while(idx<list.length && list[idx].start+list[idx].len/2 < rawT) idx++;
+    // over a section: land exactly on its near edge, so "drop between A and B"
+    // pushes B onward and leaves A alone. Over open ring: keep the grip it was
+    // picked up by, kept inside the gap when it fits so nothing gets shoved needlessly.
+    const over=list.find(x=>rawT>=x.start && rawT<x.start+x.len);
+    let want;
+    if(over) want = list.indexOf(over)<idx ? over.start+over.len : over.start;
+    else{
+      const lo=idx>0 ? list[idx-1].start+list[idx-1].len : 0, hi=idx<list.length ? list[idx].start : 24;
+      want=rawT-clamp(drag.grabOffset,0,b.len);
+      if(hi-lo>=b.len) want=clamp(want,lo,hi-b.len);
+    }
+    list.splice(idx,0,b);
+    resolve(list,idx,want,drag.restOrigin);
+    blocks=list;
+    const slot=idx+"@"+b.start;
+    if(slot!==drag.slot){ hapticTick(); drag.slot=slot; }
+    showRead(fmt(b.start)+"–"+fmt(b.start+b.len), typeOf(b.type).name+" · drop to place");
+    render();
+  }
+
+  function endDrag(cancel){
+    if(!drag) return;
+    const d=drag; drag=null; clearTimeout(d.hold);
+    ghost.style.display="none"; ghost.classList.remove("doomed");
+    clockWrap.classList.remove("armDelete"); READ.classList.remove("danger");
+    clear(gGhost);
+
+    // a tap on a section (no drag, no hold) -> picker
+    if(!cancel && !d.active && (d.mode==="move"||d.mode==="resize")){
+      settleAllLifts(); render(); openPicker(d.id,false); return;
+    }
+    if(d.mode==="draw"){
+      if(d.newId && !cancel){ settleAllLifts(); render(); save(); openPicker(d.newId,true); return; }
+      if(d.newId){ blocks=blocks.filter(x=>x.id!==d.newId); }
+      else if(!cancel){ showRead("draw along the ring","touch an empty stretch and drag"); }
+    }
+    else if(d.mode==="carry"){
+      if(cancel){
+        blocks=[...d.rest,d.block]; for(const x of blocks){ const o=d.origin.get(x.id); if(o!==undefined) x.start=o; }
+        sortBlocks();
+      } else if(d.armDelete){
+        blocks=d.rest; delete springs[d.block.id]; hapticWarn();
+      } else {
+        for(const x of blocks) bump(x.id,0.5);
+        bump(d.block.id,1.8); haptic();
+      }
+    }
+    else if(d.id && byId(d.id)) bump(d.id,1.5);
+    settleAllLifts(); render(); setTimeout(hideRead,cancel?0:700); save();
+  }
+  window.addEventListener("pointerup",(e)=>{ if(drag&&e.pointerId===drag.pid) endDrag(false); });
+  window.addEventListener("pointercancel",(e)=>{ if(drag&&e.pointerId===drag.pid) endDrag(true); });
 
   // ---- collision legibility: lift the dragged block + whichever neighbor it actually displaces
   // into the outer conflict lane for a beat, so the shove is SEEN before it's resolved, then settle.
@@ -966,87 +1142,104 @@
   }
 
   function updateRead(){
-    if(!drag||drag.mode==="hub") return;
-    const b=blocks[drag.idx]; if(!b)return; const ty=typeOf(b.type);
+    if(!drag||!drag.id) return;
+    const b=byId(drag.id); if(!b)return; const ty=typeOf(b.type);
     if(drag.mode==="resize") showRead(durText(b.len), ty.name+" · "+fmt(b.start)+"–"+fmt(b.start+b.len));
     else showRead(fmt(b.start)+"–"+fmt(b.start+b.len), ty.name+" · "+durText(b.len)+" · "+durText(freeHours())+" free");
   }
 
-  /* ---------------- stone -> ring creation ---------------- */
-  const ghost=$("ghost");
-  let stoneDrag=null;
-  function startStoneDrag(e,p,node){
-    if(drag||stoneDrag) return; // clock drag and stone drag are mutually exclusive
-    e.preventDefault();
-    try{node.setPointerCapture(e.pointerId);}catch(_){/* stale/synthetic pointer */}
-    node.classList.add("lifting");
-    stoneDrag={type:p.id, node, pointerId:e.pointerId};
-    ghost.style.display="flex";
-    ghost.style.background="radial-gradient(120% 120% at 35% 25%, "+lighten(p.c0,.2)+", "+p.c0+" 62%, "+p.c1+" 100%)";
-    ghost.textContent=p.emoji;
-    moveGhost(e.clientX,e.clientY);
-    node.addEventListener("pointermove",onStoneMove);
-    node.addEventListener("pointerup",onStoneUp);
-    node.addEventListener("pointercancel",onStoneUp);
+  /* ---------------- bubble picker ----------------
+     Symbol bubbles bloom out of the section toward the hub (inside the ring is
+     always on-screen; outside is clipped at 3 and 9 o'clock on a phone). No form:
+     tap a bubble to set the symbol, the ✕ bubble to let the section go, anywhere
+     else to keep it as it is. A freshly drawn section already wears the last
+     symbol used, so dismissing never loses the gesture. */
+  const pickerEl=$("picker");
+  function toScreen(pt){ const m=clock.getScreenCTM(); return {x:m.a*pt.x+m.c*pt.y+m.e, y:m.b*pt.x+m.d*pt.y+m.f}; }
+  function openPicker(id,isNew){
+    const b=byId(id); if(!b) return;
+    picker={id,isNew};
+    setLift(id,0.7);
+    // bubbles sit on an arc just inside the ring, centred on the section's middle
+    const mid=b.start+b.len/2, P=toScreen(ptAt(mid,1)), C=toScreen({x:CX,y:CY});
+    const scale=Math.hypot(P.x-C.x,P.y-C.y)/A;       // screen px per dial unit
+    const items=[...palette.map(p=>({p})),{del:true}];
+    const n=items.length, R=0.64*A*scale, step=54/R;   // ~54px between bubble centres
+    const th0=hourToTheta(mid);
+    const W=window.innerWidth, H=window.innerHeight;
+    pickerEl.querySelectorAll(".bubble").forEach(x=>x.remove());
+    items.forEach((it,i)=>{
+      const a=th0+(i-(n-1)/2)*step;
+      const x=clamp(C.x+Math.sin(a)*R,30,W-30), y=clamp(C.y-Math.cos(a)*R,40,H-40);
+      const bt=document.createElement("button");
+      bt.className="bubble"+(it.del?" del":"")+(it.p&&it.p.id===b.type?" cur":"");
+      bt.style.left=x+"px"; bt.style.top=y+"px";
+      bt.style.setProperty("--fx",(P.x-x)+"px"); bt.style.setProperty("--fy",(P.y-y)+"px");
+      bt.style.setProperty("--d",(i*26)+"ms");
+      if(it.p){
+        bt.style.background="radial-gradient(120% 120% at 35% 25%, "+lighten(it.p.c0,.2)+", "+it.p.c0+" 62%, "+it.p.c1+" 100%)";
+        bt.innerHTML='<span class="emo"></span><span class="nm"></span>';
+        bt.querySelector(".emo").textContent=it.p.emoji; bt.querySelector(".nm").textContent=it.p.name;
+        bt.setAttribute("aria-label",it.p.name);
+        bt.addEventListener("pointerup",(e)=>{ e.stopPropagation(); chooseType(it.p.id); });
+      } else {
+        bt.innerHTML='<span class="emo">✕</span><span class="nm">Let go</span>';
+        bt.setAttribute("aria-label","Remove section");
+        bt.addEventListener("pointerup",(e)=>{ e.stopPropagation(); const pid=picker&&picker.id; closePicker(); if(pid) deleteBlock(pid); });
+      }
+      bt.addEventListener("pointerdown",(e)=>e.stopPropagation());
+      pickerEl.appendChild(bt);
+    });
+    pickerEl.classList.add("live");
+    void pickerEl.offsetWidth; // commit the collapsed state so the bloom transitions
+    pickerEl.classList.add("open");
     haptic();
+    showRead(fmt(b.start)+"–"+fmt(b.start+b.len), (isNew?"new · ":"")+durText(b.len)+" · pick its symbol");
   }
-  const moveGhost=(x,y)=>{ ghost.style.left=x+"px"; ghost.style.top=y+"px"; };
-  function onStoneMove(e){
-    if(!stoneDrag)return; e.preventDefault();
-    moveGhost(e.clientX,e.clientY);
-    const p=ptSVG(e), r=ringDist(p.x,p.y), near=Math.abs(r-1)<0.45;
-    ghost.style.transform=near?"scale(1.12)":"scale(1)";
-    if(near){ const t=snap(ptToHour(p.x,p.y)); showRead(fmt(t), typeOf(stoneDrag.type).name+" · drop to place"); }
-    else hideRead();
+  function chooseType(type){
+    if(!picker) return;
+    const b=byId(picker.id);
+    if(b){ b.type=type; lastType=type; bump(b.id,1.6); }
+    hapticTick(); closePicker(); render(); save();
   }
-  function onStoneUp(e){
-    if(!stoneDrag)return;
-    const node=stoneDrag.node;
-    node.removeEventListener("pointermove",onStoneMove);
-    node.removeEventListener("pointerup",onStoneUp);
-    node.removeEventListener("pointercancel",onStoneUp);
-    node.classList.remove("lifting");
-    ghost.style.display="none";
-    const p=ptSVG(e), r=ringDist(p.x,p.y);
-    if(Math.abs(r-1)<0.45){ placeBlock(stoneDrag.type, snap(ptToHour(p.x,p.y))); }
-    stoneDrag=null; setTimeout(hideRead,500);
+  function closePicker(){
+    if(!picker) return;
+    setLift(picker.id,0); picker=null;
+    pickerEl.classList.remove("open");
+    setTimeout(()=>{ if(!picker){ pickerEl.classList.remove("live"); pickerEl.querySelectorAll(".bubble").forEach(x=>x.remove()); } },260);
+    hideRead(); kickRaf();
   }
-  function placeBlock(type,startAt){
-    const len=1;
-    // a stone only fits if the day has room for it — otherwise bounce it back
-    if(blocks.reduce((s,b)=>s+b.len,0)+len>24){
-      hapticWarn(); showRead("day is full","let something go first");
-      setTimeout(hideRead,1200);
-      return;
-    }
-    startAt=clamp(startAt,0,24-len);
-    const origin=new Map(blocks.map(x=>[x.id,x.start]));
-    const nb={id:uid(),type,start:startAt,len};
-    blocks.push(nb); sortBlocks();
-    const idx=blocks.indexOf(nb);
-    resolve(blocks,idx,startAt,origin);
-    sortBlocks();
-    for(const b of blocks) bump(b.id,0.7);
-    bump(nb.id,2.2); haptic(); render(); save();
-  }
+  pickerEl.addEventListener("pointerdown",(e)=>{ e.preventDefault(); closePicker(); });
+  window.addEventListener("keydown",(e)=>{ if(e.key==="Escape") closePicker(); });
 
-  /* ---------------- now-on-top toggle ---------------- */
-  const toggle=$("nowToggle");
-  function applyNowTop(animate){
-    const target = nowOnTop ? -nowHour() : BASE_ROT;
-    toggle.classList.toggle("on",nowOnTop);
-    if(!animate){ viewRotation=target; render(); return; }
-    let from=viewRotation, to=target;
-    let d=((to-from)%24+24)%24; if(d>12)d-=24; to=from+d;
-    const t0=performance.now(), dur=650;
-    (function step(now){
-      const k=clamp((now-t0)/dur,0,1), e=1-Math.pow(1-k,3);
-      viewRotation=from+(to-from)*e; render();
-      if(k<1) requestAnimationFrame(step); else { viewRotation=target; render(); }
-    })(performance.now());
+  /* ---------------- frame switch ---------------- */
+  const frameSwitch=$("frameSwitch");
+  function syncFrameSwitch(){
+    frameSwitch.dataset.frame=frame;
+    frameSwitch.querySelectorAll("button").forEach(bt=>{
+      const on=bt.dataset.f===frame; bt.classList.toggle("on",on); bt.setAttribute("aria-checked",on);});
   }
-  toggle.addEventListener("pointerdown",(e)=>{ e.preventDefault();
-    nowOnTop=!nowOnTop; haptic(); applyNowTop(true); save(); });
+  let frameAnim=0;
+  function setFrame(next,animate){
+    if(!FRAMES.includes(next)) return;
+    NOW=nowHour();
+    if(!animate||next===frame){ frame=frameFrom=next; frameK=1; syncFrameSwitch(); applySkyGradient(); render(); return; }
+    frameFrom=frame; frame=next; frameK=0; syncFrameSwitch();
+    const t0=performance.now(), dur=700, id=++frameAnim;
+    (function step(now){
+      if(id!==frameAnim) return;
+      const k=clamp((now-t0)/dur,0,1);
+      frameK=k<1 ? 1-Math.pow(1-k,3) : 1;
+      if(k>=1) frameFrom=frame;
+      document.body.style.backgroundImage=buildSkyConic(); render();
+      if(k<1) requestAnimationFrame(step);
+    })(t0);
+  }
+  frameSwitch.addEventListener("pointerdown",(e)=>{
+    const bt=e.target.closest("button"); if(!bt) return;
+    e.preventDefault(); if(drag) return;
+    haptic(); setFrame(bt.dataset.f,true); save();
+  });
 
   /* ---------------- animation loop ----------------
      The rAF loop only runs while something is actually animating (springs or a
@@ -1071,11 +1264,11 @@
   function housekeeping(){
     // recompute solar terms when the calendar day or timezone offset changes (DST, overnight tab)
     const d=new Date(), key=d.toDateString()+"/"+d.getTimezoneOffset();
-    if(key!==sunKey){ sunKey=key; computeSun(); }
+    if(key!==sunKey){ sunKey=key; computeSun(); if(!drag) render(); }
     const t=nowHour(), curMin=Math.floor(t*60);
     if(curMin!==lastNowMin && !drag){
       lastNowMin=curMin;
-      if(nowOnTop){ viewRotation=-t; render(); }
+      if(frame==="now"){ NOW=t; render(); }
       else { drawNow(); drawLived(); drawBodies(); }
     }
     applySkyGradient();
@@ -1100,13 +1293,15 @@
   buildStars();
   window.addEventListener("resize",()=>{ buildStars(); applySkyGradient(); }); // conic center tracks the dial
   applySkyGradient();
-  buildTray();
-  applyNowTop(false);
+  NOW=nowHour();
+  setFrame(frame,false);
   render();
   save(); // persist the sanitized state so a corrupted store heals permanently
   kickRaf();
 
   document.addEventListener("gesturestart",(e)=>e.preventDefault());
+  // hold-to-carry must not summon the long-press menu
+  document.addEventListener("contextmenu",(e)=>e.preventDefault());
   let lastTap=0;
   document.addEventListener("touchend",(e)=>{const n=Date.now();if(n-lastTap<300)e.preventDefault();lastTap=n;},{passive:false});
 })();
