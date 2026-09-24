@@ -41,7 +41,7 @@
   body{
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif;
     color:var(--ink);
-    touch-action:none;user-select:none;-webkit-user-select:none;
+    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
     position:fixed;inset:0;
     /* day/night cycle laid out spatially: conic centered on the dial, noon-top
        matches daylight-up/night-down/sunrise-left/sunset-right. JS rebuilds the
@@ -1019,9 +1019,9 @@
     ghost.style.background="radial-gradient(120% 120% at 35% 25%, "+lighten(ty.c0,.2)+", "+ty.c0+" 62%, "+ty.c1+" 100%)";
     ghost.textContent=ty.emoji;
     moveGhost(drag.lastX,drag.lastY);
-    haptic();
-    const p=ptSVG({clientX:drag.lastX,clientY:drag.lastY});
-    carryPlace(ptToHour(p.x,p.y));
+    haptic(); render();
+    // it stays in its slot, lifted, until the finger actually travels
+    showRead(fmt(b.start)+"–"+fmt(b.start+b.len), ty.name+" · carry it anywhere · hub lets it go");
   }
   function carryMove(e,r,rawT){
     moveGhost(e.clientX,e.clientY);
@@ -1049,14 +1049,14 @@
     // slot = after every block whose middle is behind the finger
     let idx=0; while(idx<list.length && list[idx].start+list[idx].len/2 < rawT) idx++;
     // over a section: land exactly on its near edge, so "drop between A and B"
-    // pushes B onward and leaves A alone. Over open ring: centre on the finger,
-    // kept inside the gap when it fits so nothing gets shoved needlessly.
+    // pushes B onward and leaves A alone. Over open ring: keep the grip it was
+    // picked up by, kept inside the gap when it fits so nothing gets shoved needlessly.
     const over=list.find(x=>rawT>=x.start && rawT<x.start+x.len);
     let want;
     if(over) want = list.indexOf(over)<idx ? over.start+over.len : over.start;
     else{
       const lo=idx>0 ? list[idx-1].start+list[idx-1].len : 0, hi=idx<list.length ? list[idx].start : 24;
-      want=rawT-b.len/2;
+      want=rawT-clamp(drag.grabOffset,0,b.len);
       if(hi-lo>=b.len) want=clamp(want,lo,hi-b.len);
     }
     list.splice(idx,0,b);
@@ -1300,6 +1300,8 @@
   kickRaf();
 
   document.addEventListener("gesturestart",(e)=>e.preventDefault());
+  // hold-to-carry must not summon the long-press menu
+  document.addEventListener("contextmenu",(e)=>e.preventDefault());
   let lastTap=0;
   document.addEventListener("touchend",(e)=>{const n=Date.now();if(n-lastTap<300)e.preventDefault();lastTap=n;},{passive:false});
 })();
