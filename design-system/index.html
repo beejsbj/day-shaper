@@ -42,20 +42,25 @@
   .t-label{font:var(--type-label);letter-spacing:.32em;text-transform:uppercase;}
   .t-micro{font:var(--type-micro);letter-spacing:.14em;}
   /* primitives */
-  .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-pill);
-    background:var(--surface);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 4px 14px var(--shadow);
-    font:var(--type-label);letter-spacing:.14em;text-transform:uppercase;color:var(--ink);}
-  .pill .knob{width:16px;height:16px;border-radius:50%;
-    background:radial-gradient(circle at 35% 30%,#fff,#cfdcec);box-shadow:0 1px 3px var(--shadow);}
-  .pill--on .knob{background:radial-gradient(circle at 35% 30%,#fff,var(--sun));}
-  .stone{width:58px;height:58px;border-radius:var(--radius-orb);color:#fff;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:grab;
+  .switch{position:relative;display:inline-grid;grid-template-columns:repeat(3,1fr);padding:3px;border-radius:var(--radius-pill);
+    background:var(--surface);box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 4px 14px var(--shadow);}
+  .switch .knob{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/3);border-radius:18px;
+    background:radial-gradient(120% 140% at 35% 20%,#fff,#e7eef7 60%,#cfdcec);box-shadow:0 1px 4px var(--shadow);}
+  .switch--sun .knob{transform:translateX(100%);background:radial-gradient(120% 140% at 35% 20%,#fff8e0,#ffe6a8 60%,var(--sun));}
+  .switch span.seg{position:relative;padding:6px 9px;min-width:42px;text-align:center;
+    font:var(--type-label);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);opacity:.62;}
+  .switch span.seg.on{opacity:1;}
+  .bubble{position:relative;width:48px;height:48px;border-radius:var(--radius-orb);color:#fff;
+    display:inline-flex;align-items:center;justify-content:center;
     box-shadow:inset 0 2px 6px rgba(255,255,255,.55), inset 0 -5px 10px rgba(70,90,130,.22), var(--shadow-float);}
-  .stone .emo{font-size:19px;line-height:1;}
-  .stone .nm{font-size:8.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-top:2px;
-    text-shadow:0 1px 2px rgba(40,60,100,.35);}
-  .stone--lifting{opacity:.3;transform:scale(.88);}
+  .bubble .emo{font-size:20px;line-height:1;}
+  .bubble .nm{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;
+    font-size:8px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);}
+  .bubble--cur{box-shadow:inset 0 2px 6px rgba(255,255,255,.55), inset 0 -5px 10px rgba(70,90,130,.22),
+    0 0 0 2.5px #fff, 0 0 0 6px var(--lift-glow), var(--shadow-float);}
+  .bubble--del{background:var(--surface);color:var(--delete-red);}
+  .bubble--carry{width:66px;height:66px;font-size:22px;}
+  .bubble--doomed{transform:scale(.72);box-shadow:0 0 0 3px var(--delete-red), var(--shadow-float);}
   .scrim{display:inline-block;text-align:center;background:var(--surface-deep);
     border-radius:var(--radius-scrim);padding:7px 18px 9px;color:#fff;box-shadow:0 8px 24px rgba(40,60,110,.22);}
   .scrim .t{font-size:26px;font-weight:300;}
@@ -123,22 +128,31 @@
 
   <section>
     <div class="tier">Tier 2 · Primitives</div>
-    <h2>Matte pill · stone · scrim</h2>
+    <h2>Frame switch · bubble · scrim</h2>
     <p class="note">Surfaces are soft matte — near-opaque, no blur. Glassmorphism is a forbidden
     mutation system-wide: depth comes from the sphere highlight and soft shadow, never from translucency.</p>
     <div class="row">
-      <span class="pill"><span class="knob"></span>NOW ON TOP</span>
-      <span class="pill pill--on"><span class="knob"></span>NOW ON TOP</span>
-      <div class="stone" style="background:radial-gradient(120% 120% at 35% 25%,#b8c4ea,var(--block-sleep-0) 62%,var(--block-sleep-1))"><span class="emo">🌙</span><span class="nm">Sleep</span></div>
-      <div class="stone stone--lifting" style="background:radial-gradient(120% 120% at 35% 25%,#f8d4b4,var(--block-work-0) 62%,var(--block-work-1))"><span class="emo">✎</span><span class="nm">Work</span></div>
+      <span class="switch"><span class="knob"></span><span class="seg on">Noon</span><span class="seg">Sun</span><span class="seg">Now</span></span>
+      <span class="switch switch--sun"><span class="knob"></span><span class="seg">Noon</span><span class="seg on">Sun</span><span class="seg">Now</span></span>
+      <span class="bubble" style="background:radial-gradient(120% 120% at 35% 25%,#b8c4ea,var(--block-sleep-0) 62%,var(--block-sleep-1))"><span class="emo">🌙</span><span class="nm">Sleep</span></span>
+      <span class="bubble bubble--cur" style="background:radial-gradient(120% 120% at 35% 25%,#f8d4b4,var(--block-work-0) 62%,var(--block-work-1))"><span class="emo">✎</span><span class="nm">Work</span></span>
+      <span class="bubble bubble--del"><span class="emo">✕</span><span class="nm">Let go</span></span>
+      <span class="bubble bubble--carry" style="background:radial-gradient(120% 120% at 35% 25%,#f0c8d8,var(--block-rest-0) 62%,var(--block-rest-1))"><span class="emo">☕</span></span>
+      <span class="bubble bubble--carry bubble--doomed" style="background:radial-gradient(120% 120% at 35% 25%,#f0c8d8,var(--block-rest-0) 62%,var(--block-rest-1))"><span class="emo">☕</span></span>
       <div class="scrim"><div class="t">09:00–13:00</div><div class="l">WORK · 4H</div></div>
-      <div class="scrim scrim--danger"><div class="t">release to delete</div><div class="l">DRAG BACK TO KEEP</div></div>
+      <div class="scrim scrim--danger"><div class="t">release to let go</div><div class="l">DRAG BACK OUT TO KEEP IT</div></div>
     </div>
     <div class="anatomy">
-      <b>Anatomy — stone.</b> Canonical: 58px sphere, radial highlight at 35% 25%, emoji + 8.5px caps name.
-      Parts: body / emo / nm. Tokens: block pastel pair, <code>--shadow-float</code>, <code>--radius-orb</code>.
-      States: rest · grabbed (cursor + scale) · lifting (opacity .3, scale .88) · ghost (66px, follows thumb).
-      Variant axis: block type only. Forbidden: borders, hard shadows, any non-spherical radius, text inputs of any kind.
+      <b>Anatomy — bubble.</b> Canonical: 48px sphere, radial highlight at 35% 25%, emoji centred, 8px caps name hung below.
+      Parts: body / emo / nm. Tokens: block pastel pair, <code>--shadow-float</code>, <code>--radius-orb</code>, <code>--lift-glow</code>.
+      States: rest · current (white + glow halo) · blooming (from the section, springy, 26ms stagger) · pressed (scale .88).
+      Variants: type · let-go (matte surface, ember ✕) · carry (66px, follows the thumb, no name) · doomed (over the hub: shrinks, ember ring).
+      Forbidden: borders, hard shadows, any non-spherical radius, text inputs of any kind.
+    </div>
+    <div class="anatomy">
+      <b>Anatomy — frame switch.</b> Three segments on one matte pill; a sliding sphere knob marks the frame
+      (sun-warmed on Sun). Noon: noon up, uniform. Sun: sunrise left, sunset right, time warped so daylight owns the top half.
+      Now: now up, and the sky + orb turn with the dial.
     </div>
   </section>
 
@@ -157,17 +171,20 @@
 
   <section>
     <div class="tier">Tier 4 · Compounds</div>
-    <h2>Header · tray</h2>
+    <h2>Header · picker bloom</h2>
+    <p class="note">No tray: the ring is the creation surface. Drawing or tapping a section blooms the
+    symbol bubbles on an arc just inside the ring, centred on the section.</p>
     <div class="row">
       <div class="frame frame--day">
         <div class="t-label" style="opacity:.5">DAY&nbsp;SHAPER</div>
         <div class="t-title" style="margin-top:4px">Good morning</div>
         <div style="font:var(--type-body);opacity:.6;margin-top:4px">Friday, July 17 · 13h 52m of light</div>
       </div>
-      <div class="frame frame--night" style="display:flex;gap:9px;align-items:center;justify-content:center">
-        <div class="stone" style="background:radial-gradient(120% 120% at 35% 25%,#b8c4ea,var(--block-sleep-0) 62%,var(--block-sleep-1))"><span class="emo">🌙</span><span class="nm">Sleep</span></div>
-        <div class="stone" style="background:radial-gradient(120% 120% at 35% 25%,#f8e2ac,var(--block-eat-0) 62%,var(--block-eat-1))"><span class="emo">🍯</span><span class="nm">Eat</span></div>
-        <div class="stone" style="background:radial-gradient(120% 120% at 35% 25%,#c2e4d0,var(--block-move-0) 62%,var(--block-move-1))"><span class="emo">⚡</span><span class="nm">Move</span></div>
+      <div class="frame frame--night" style="display:flex;gap:8px;align-items:center;justify-content:center;padding-bottom:28px">
+        <span class="bubble" style="background:radial-gradient(120% 120% at 35% 25%,#b8c4ea,var(--block-sleep-0) 62%,var(--block-sleep-1))"><span class="emo">🌙</span><span class="nm" style="color:#fff">Sleep</span></span>
+        <span class="bubble bubble--cur" style="background:radial-gradient(120% 120% at 35% 25%,#f8e2ac,var(--block-eat-0) 62%,var(--block-eat-1))"><span class="emo">🍯</span><span class="nm" style="color:#fff">Eat</span></span>
+        <span class="bubble" style="background:radial-gradient(120% 120% at 35% 25%,#c2e4d0,var(--block-move-0) 62%,var(--block-move-1))"><span class="emo">⚡</span><span class="nm" style="color:#fff">Move</span></span>
+        <span class="bubble bubble--del"><span class="emo">✕</span><span class="nm" style="color:#fff">Let go</span></span>
       </div>
     </div>
   </section>
