@@ -32,12 +32,14 @@
     --serif:"Fraunces","Iowan Old Style","Palatino",Georgia,serif;
     --mono:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;
     --spring:cubic-bezier(.3,1.5,.45,1);
+    --alert:#f15060;
   }
   body.night{
     --paper:#141828;  --card:#1d2236;  --card-edge:#2a3048;
     --ink:#f0e7d4;    --ink-2:rgba(240,231,212,.62); --ink-3:rgba(240,231,212,.26); --ink-4:rgba(240,231,212,.08);
     --core:#8d7a5a;
     --tape-blend:normal; --tape-o:.93;
+    --alert:#ff7a86;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
@@ -53,9 +55,9 @@
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45  0 0 0 0 .38  0 0 0 0 .3  0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");}
   body.night #grain{mix-blend-mode:screen;opacity:.1;}
   /* crop + registration marks: this is a printed sheet */
-  .mark{position:fixed;z-index:1;width:22px;height:22px;pointer-events:none;opacity:.5;color:var(--ink);}
-  .mark.tl{top:calc(6px + env(safe-area-inset-top));left:6px;}
-  .mark.br{bottom:calc(6px + env(safe-area-inset-bottom));right:6px;transform:rotate(180deg);}
+  .mark{position:fixed;z-index:1;width:16px;height:16px;pointer-events:none;opacity:.45;color:var(--ink);}
+  .mark.tl{top:calc(4px + env(safe-area-inset-top));left:4px;}
+  .mark.br{bottom:calc(4px + env(safe-area-inset-bottom));right:4px;transform:rotate(180deg);}
   .mark svg{width:100%;height:100%;}
 
   #stage{position:fixed;inset:0;z-index:2;display:flex;flex-direction:column;
@@ -141,6 +143,12 @@
   @media (max-height:700px){
     #mast{padding-top:12px;} #dayname{font-size:36px;margin-top:5px;} #dateline{margin-top:4px;}
     #ledger{padding-top:8px;} #hint{margin-top:5px;padding-top:5px;}
+  }
+  /* narrow sheets (360): the hint and sums tighten their tracking rather than clip */
+  @media (max-width:400px){
+    #hint{font-size:7.5px;letter-spacing:.11em;}
+    .sums{letter-spacing:.14em;}
+    #mast{padding-right:16px;}
   }
   @media (prefers-reduced-motion:reduce){ .roll{transition-duration:.01s !important;} }
 </style>
@@ -475,15 +483,19 @@
       const ss=sun.sunset, sr=sun.sunrise+(sun.sunrise<sun.sunset?24:0);
       gTrack.appendChild(el("path",{d:sector(ss,sr,rimR-1.8,rimR+1.8),fill:"#0078bf",opacity:.8},{mixBlendMode:"var(--tape-blend)"}));
     }
-    // hour ticks + two-digit numerals every three hours
+    // hour ticks + two-digit numerals every three hours. A numeral that sits under the
+    // sun or moon stamp gives way to it (the stamp was printed over it), instead of colliding.
+    const bh=bodyHours(), stamps=[ptAt(bh.sunT,BODY_R),ptAt(bh.moonT,BODY_R)];
     for(let h=0;h<24;h++){
       const big=h%3===0, p1=ptAt(h,rimR+4), p2=ptAt(h,rimR+(big?10:7));
       gTrack.appendChild(el("line",{x1:f1(p1.x),y1:f1(p1.y),x2:f1(p2.x),y2:f1(p2.y),"stroke-width":big?1.1:.6,
         "stroke-linecap":"round",opacity:big?.7:.35},ink));
       if(big){
         const lp=ptAt(h,rimR+19);
+        const clearOf=Math.min(...stamps.map(s=>smooth(18,28,Math.hypot(s.x-lp.x,s.y-lp.y))));
+        if(clearOf<.02) continue;
         const tx=el("text",{x:f1(lp.x),y:f1(lp.y),"text-anchor":"middle","dominant-baseline":"central"},
-          {font:(h%12===0?"500 ":"400 ")+"8.5px var(--mono)",letterSpacing:".06em",fill:"var(--ink)",opacity:h%6===0?.85:.5});
+          {font:(h%12===0?"500 ":"400 ")+"8.5px var(--mono)",letterSpacing:".06em",fill:"var(--ink)",opacity:(h%6===0?.85:.5)*clearOf});
         tx.textContent=String(h).padStart(2,"0"); gTrack.appendChild(tx);
       }
     }
@@ -552,23 +564,40 @@
     gSpent.appendChild(el("path",{d:sector(0,t,R_IN-1,R_OUT+1),fill:"url(#hatch)",opacity:.22}));
   }
 
-  function drawBodies(){
-    clear(gBodies);
+  // where the two stamps sit: the live body rides NOW; the other is parked at its zenith
+  function bodyHours(){
     const t=NOW, day=isDayAt(t), D=((sun.sunset-sun.sunrise)%24+24)%24;
     const solarNoon=(sun.sunrise+D/2)%24, solarMid=(solarNoon+12)%24;
-    // sun stamp: riding the day at its true hour; parked faint at solar noon at night
-    const sp=ptAt(day?t:solarNoon,BODY_R), sg=el("g",{opacity:day?1:.28});
-    for(let i=0;i<10;i++){ const a=i/10*TAU, p1=polar(a,12.5), p2=polar(a,16.5);
+    return {day, sunT:day?t:solarNoon, moonT:day?solarMid:t};
+  }
+  // crescent = disc r1 minus disc r2 offset by (ox,oy); drawn as one outline path
+  function crescentPath(cx,cy,r1,ox,oy,r2){
+    const d=Math.hypot(ox,oy), a=(r1*r1-r2*r2+d*d)/(2*d), h=Math.sqrt(Math.max(0,r1*r1-a*a));
+    const ux=ox/d, uy=oy/d, mx=cx+a*ux, my=cy+a*uy;
+    const P1={x:mx-h*uy,y:my+h*ux}, P2={x:mx+h*uy,y:my-h*ux};
+    return "M"+f1(P1.x)+" "+f1(P1.y)+"A"+r1+" "+r1+" 0 1 1 "+f1(P2.x)+" "+f1(P2.y)
+      +"A"+r2+" "+r2+" 0 0 0 "+f1(P1.x)+" "+f1(P1.y)+"Z";
+  }
+  function drawBodies(){
+    clear(gBodies);
+    const {day,sunT,moonT}=bodyHours();
+    // sun stamp: riding the day at its true hour. Parked at solar noon by night, it's an
+    // un-inked blind stamp (outline only) — a tint of yellow goes muddy on midnight stock.
+    const sp=ptAt(sunT,BODY_R), sg=el("g");
+    for(let i=0;i<10;i++){ const a=i/10*TAU, p1=polar(a,day?12.5:12), p2=polar(a,day?16.5:14.5);
       sg.appendChild(el("line",{x1:f1(sp.x+p1.x-CX),y1:f1(sp.y+p1.y-CY),x2:f1(sp.x+p2.x-CX),y2:f1(sp.y+p2.y-CY),
-        stroke:"#ff6c2f","stroke-width":1.6,"stroke-linecap":"round"})); }
-    sg.appendChild(el("circle",{cx:f1(sp.x),cy:f1(sp.y),r:9.5,fill:"#ffe800"},{mixBlendMode:"var(--tape-blend)"}));
-    sg.appendChild(el("circle",{cx:f1(sp.x+1),cy:f1(sp.y-.8),r:9.5,fill:"none",stroke:"#ff6c2f","stroke-width":1}));
+        "stroke-width":day?1.6:1,"stroke-linecap":"round"},{stroke:day?"#ff6c2f":"var(--ink)",opacity:day?1:.4})); }
+    if(day){
+      sg.appendChild(el("circle",{cx:f1(sp.x),cy:f1(sp.y),r:9.5,fill:"#ffe800"},{mixBlendMode:"var(--tape-blend)"}));
+      sg.appendChild(el("circle",{cx:f1(sp.x+1),cy:f1(sp.y-.8),r:9.5,fill:"none",stroke:"#ff6c2f","stroke-width":1}));
+    } else {
+      sg.appendChild(el("circle",{cx:f1(sp.x),cy:f1(sp.y),r:9,fill:"none","stroke-width":1,"stroke-dasharray":"2 1.6"},{stroke:"var(--ink)",opacity:.45}));
+    }
     gBodies.appendChild(sg);
-    // moon stamp, printed in blue and knocked out with the card colour
-    const mp=ptAt(!day?t:solarMid,BODY_R), mg=el("g",{opacity:!day?1:.28});
-    mg.appendChild(el("circle",{cx:f1(mp.x),cy:f1(mp.y),r:9.5},{fill:"var(--moon-ink,#0078bf)"}));
-    mg.appendChild(el("circle",{cx:f1(mp.x+4.6),cy:f1(mp.y-3),r:8},{fill:"var(--card)"}));
-    gBodies.appendChild(mg);
+    // moon stamp, printed in blue (cream on midnight stock). Parked by day: the same blind outline.
+    const mp=ptAt(moonT,BODY_R), cres=crescentPath(mp.x,mp.y,9.5,4.6,-3,8);
+    if(!day) gBodies.appendChild(el("path",{d:cres},{fill:"var(--moon-ink,#0078bf)"}));
+    else gBodies.appendChild(el("path",{d:cres,fill:"none","stroke-width":1,"stroke-dasharray":"2 1.6","stroke-linejoin":"round"},{stroke:"var(--ink)",opacity:.45}));
   }
 
   function drawNow(){
@@ -628,7 +657,7 @@
       const dt=b.start-o; if(Math.abs(dt)<SNAP*.5) continue;
       gGhost.appendChild(el("path",{d:sector(o,o+b.len,R_IN,R_OUT),fill:"none","stroke-width":1,"stroke-dasharray":"2.5 2.5",opacity:.55},{stroke:"var(--ink)"}));
       const lp=ptAt(o+b.len/2,R_OUT+12), mins=Math.round(dt*60);
-      const tx=el("text",{x:f1(lp.x),y:f1(lp.y),"text-anchor":"middle","dominant-baseline":"central"},{font:"500 8px var(--mono)",fill:"#f15060"});
+      const tx=el("text",{x:f1(lp.x),y:f1(lp.y),"text-anchor":"middle","dominant-baseline":"central"},{font:"500 8px var(--mono)",fill:"var(--alert)"});
       tx.textContent=(mins>0?"+":"")+mins+"m"; gGhost.appendChild(tx);
     }
   }
