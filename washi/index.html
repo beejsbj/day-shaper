@@ -161,6 +161,11 @@
   #carry.crush svg{transform:scale(.34,.72) rotate(-26deg);transition:transform .13s cubic-bezier(.5,0,.9,.5);}
   #carry.ball svg{filter:drop-shadow(0 5px 5px rgba(40,28,14,.32));transition:none;}
   #gHub{transform-origin:195px 195px;}
+  /* an empty day: a roll waits on the ring and a pencilled arrow shows the pull */
+  .inviteRoll{transform-box:fill-box;transform-origin:center;animation:rock 2.6s ease-in-out infinite;}
+  @keyframes rock{0%,100%{transform:rotate(-7deg);} 50%{transform:rotate(9deg) translateY(-1px);}}
+  .inviteArc{animation:march 1.4s linear infinite;}
+  @keyframes march{to{stroke-dashoffset:-14;}}
   #gHub.stampDown{animation:stampDown .36s cubic-bezier(.2,1.5,.45,1);}
   @keyframes stampDown{0%{transform:scale(1.16) rotate(-5deg);opacity:.4;} 60%{transform:scale(.97) rotate(.5deg);opacity:1;} 100%{transform:none;}}
   .binRing{transform-origin:195px 195px;animation:binTurn 16s linear infinite;}
@@ -183,7 +188,7 @@
   }
   @media (prefers-reduced-motion:reduce){
     .roll{transition-duration:.01s !important;}
-    #carry.peeling svg, #gHub.thunk, #gHub.stampDown, .binRing{animation:none;}
+    #carry.peeling svg, #gHub.thunk, #gHub.stampDown, .binRing, .inviteRoll, .inviteArc{animation:none;}
   }
 </style>
 </head>
@@ -629,11 +634,14 @@
       const rIn=R_IN-wob*.5+lift, rOut=R_OUT+wob+lift;
       const drawing = drag && drag.mode==="draw" && drag.newId===b.id;
       // the leading end is still on the roll while drawing: a clean cut, not a tear
-      let ampA = drawing && drag.cur<drag.anchor ? 0 : 2.6;
-      let ampB = drawing && drag.cur>drag.anchor ? 0 : 2.6, jA=0, jB=0;
+      // torn ends scale down on very short strips (a 15m strip is ~8 units of arc), so the
+      // two ragged ends don't eat its body or cross each other
+      const AMP=clamp(b.len/24*TAU*R*.17,1,2.6);
+      let ampA = drawing && drag.cur<drag.anchor ? 0 : AMP;
+      let ampB = drawing && drag.cur>drag.anchor ? 0 : AMP, jA=0, jB=0;
       // a fresh tear: the ragged end snaps through a few shapes, overshoots, then settles
       const tr=tears[b.id];
-      if(tr){ const k=clamp((fxNow-tr.t0)/TEAR_MS,0,1), amp=2.6*(1+1.1*Math.sin(k*Math.PI*2.5)*(1-k)*(1-k)),
+      if(tr){ const k=clamp((fxNow-tr.t0)/TEAR_MS,0,1), amp=AMP*(1+1.1*Math.sin(k*Math.PI*2.5)*(1-k)*(1-k)),
           j=k<.55?1+Math.floor(k*9):0;
         if(tr.end==="a"){ ampA=amp; jA=j; } else { ampB=amp; jB=j; } }
       const grp=el("g",{filter:sp.lift>.05?"url(#liftShadow)":"url(#tapeShadow)"});
@@ -778,9 +786,12 @@
     const big=el("text",{x:CX,y:CY+4,"text-anchor":"middle","dominant-baseline":"central"},
       {font:"italic 340 40px var(--serif)",fontVariationSettings:'"opsz" 144, "SOFT" 100',letterSpacing:"-.02em",fill:"var(--ink)"});
     big.textContent=fmt(NOW); txt.appendChild(big);
-    const f=freeHours(), s=el("text",{x:CX,y:CY+33,"text-anchor":"middle"},
-      {font:"500 7.5px var(--mono)",letterSpacing:".2em",fill:f<.5?"#f15060":"var(--ink)",opacity:f<.5?1:.6});
-    s.textContent=durText(f).toUpperCase()+" UNTAPED"; txt.appendChild(s);
+    // what's left: a blank day and a fully taped one are states, not warnings; only a
+    // last sliver of bare time is printed in red
+    const f=freeHours(), low=f>0&&f<.5, s=el("text",{x:CX,y:CY+33,"text-anchor":"middle"},
+      {font:"500 7.5px var(--mono)",letterSpacing:".2em",fill:low?"#f15060":"var(--ink)",opacity:low?1:.6});
+    s.textContent= !blocks.length ? "ALL 24H BARE" : f<=0 ? "✓ EVERY HOUR TAPED" : durText(f).toUpperCase()+" UNTAPED";
+    txt.appendChild(s);
     gHub.appendChild(txt);
   }
 
@@ -812,6 +823,8 @@
   /* dashed pencil "before" outlines while a gesture is shoving neighbours */
   function drawGhosts(){
     clear(gGhost);
+    $("defs").querySelectorAll(".ip").forEach(n=>n.remove());
+    if(!blocks.length&&!(drag&&drag.mode==="draw")){ drawInvite(); return; }
     if(!drag||!drag.origin||drag.mode==="hub"||drag.armDelete) return;
     for(const b of blocks){
       const o=drag.origin.get(b.id); if(o===undefined) continue;
@@ -821,6 +834,28 @@
       const tx=el("text",{x:f1(lp.x),y:f1(lp.y),"text-anchor":"middle","dominant-baseline":"central"},{font:"500 8px var(--mono)",fill:"var(--alert)"});
       tx.textContent=(mins>0?"+":"")+mins+"m"; gGhost.appendChild(tx);
     }
+  }
+
+  /* an empty day shouldn't look broken: a fresh roll sits on the ring at the next quarter
+     hour, a pencilled arrow shows the pull, and a note is written along the inside */
+  function drawInvite(){
+    const t0=Math.ceil((NOW+.01)/SNAP)*SNAP%24, t1=t0+3, a=hourToTheta(t0), b=thetaUnwrapped(t1)+(t1>=24&&thetaUnwrapped(t1)<a?TAU:0);
+    const p0=polar(a+.09,R), pe=polar(b,R);
+    gGhost.appendChild(el("path",{class:"inviteArc",d:"M"+f1(p0.x)+" "+f1(p0.y)+arcCmd(R,a+.09,b),fill:"none","stroke-width":1.3,
+      "stroke-dasharray":"5 2 1.5 5.5","stroke-linecap":"round",opacity:.6},{stroke:"var(--ink)"}));
+    const l=polar(b-.06,R-5), r=polar(b-.06,R+5);
+    gGhost.appendChild(el("path",{d:"M"+f1(l.x)+" "+f1(l.y)+"L"+f1(pe.x)+" "+f1(pe.y)+"L"+f1(r.x)+" "+f1(r.y),fill:"none",
+      "stroke-width":1.3,"stroke-linecap":"round","stroke-linejoin":"round",opacity:.6},{stroke:"var(--ink)"}));
+    // the note, set along the inside rail and flipped upright on the lower half
+    // the note's path runs a little past both ends of the arrow so the words have room
+    const mid=(a+b)/2, thm=((mid%TAU)+TAU)%TAU, lower=thm>Math.PI/2&&thm<Math.PI*1.5, rn=R_IN-10, na=mid-.72, nb=mid+.72;
+    const s0=polar(lower?nb:na,rn), path=el("path",{id:"invitePath",class:"ip",d:"M"+f1(s0.x)+" "+f1(s0.y)+(lower?arcCmd(rn,nb,na):arcCmd(rn,na,nb))});
+    $("defs").appendChild(path);
+    const tx=el("text",{"dominant-baseline":"central"},{font:"italic 400 11.5px var(--serif)",fill:"var(--ink)",opacity:.72});
+    const tp=el("textPath",{href:"#invitePath",startOffset:"50%","text-anchor":"middle"});
+    tp.setAttributeNS("http://www.w3.org/1999/xlink","xlink:href","#invitePath");
+    tp.textContent="pull a strip of tape"; tx.appendChild(tp); gGhost.appendChild(tx);
+    const w=el("g",{class:"inviteRoll"}); w.appendChild(rollGlyph(polar(a,R),lastType,0,16)); gGhost.appendChild(w);
   }
 
   /* ---------------- the ledger strip ---------------- */
@@ -842,13 +877,15 @@
       if(h%6===0){ const t=el("text",{x:f1(x(h)),y:y1+13,"text-anchor":h===0?"start":h===24?"end":"middle"},
         {font:"400 6.5px var(--mono)",fill:"var(--ink)",opacity:.55}); t.textContent=String(h).padStart(2,"0"); strip.appendChild(t); }
     }
+    // a blank day: a pencilled outline where the tape will go
+    if(!blocks.length) strip.appendChild(el("rect",{x:1.5,y:y0+.5,width:W-3,height:y1-y0-1,fill:"none","stroke-width":.8,"stroke-dasharray":"3 3",opacity:.35},ink));
     for(const b of blocks){
-      const x0=x(b.start), x1=x(b.start+b.len), seed=hash(b.id);
+      const x0=x(b.start), x1=x(b.start+b.len), seed=hash(b.id), jm=Math.min(1,(x1-x0)/7);
       // straight tape with torn ends
       let d="M"+f1(x0)+" "+y0+"L"+f1(x1)+" "+y0;
-      for(let i=1;i<=5;i++){ const yy=y0+(y1-y0)*i/5, j=i===5?0:(i%2?1:-1)*(.4+.6*rnd(seed,i))*1.4; d+="L"+f1(x1+j)+" "+f1(yy); }
+      for(let i=1;i<=5;i++){ const yy=y0+(y1-y0)*i/5, j=i===5?0:(i%2?1:-1)*(.4+.6*rnd(seed,i))*1.4*jm; d+="L"+f1(x1+j)+" "+f1(yy); }
       d+="L"+f1(x0)+" "+y1;
-      for(let i=1;i<=5;i++){ const yy=y1-(y1-y0)*i/5, j=i===5?0:(i%2?1:-1)*(.4+.6*rnd(seed+99,i))*1.4; d+="L"+f1(x0+j)+" "+f1(yy); }
+      for(let i=1;i<=5;i++){ const yy=y1-(y1-y0)*i/5, j=i===5?0:(i%2?1:-1)*(.4+.6*rnd(seed+99,i))*1.4*jm; d+="L"+f1(x0+j)+" "+f1(yy); }
       strip.appendChild(el("path",{d:d+"Z",fill:"url(#pat_"+b.type+")"},{mixBlendMode:"var(--tape-blend)",opacity:"var(--tape-o)"}));
     }
     // now marker
@@ -858,7 +895,11 @@
     const taped=24-freeHours(), free=freeHours();
     $("sumTaped").innerHTML="<em>"+durText(taped)+"</em>taped";
     $("sumBare").innerHTML="<em>"+durText(free)+"</em>bare";
-    $("sumBare").classList.toggle("low",free<.5);
+    $("sumBare").classList.toggle("low",free>0&&free<.5);
+    const hint=$("hint"), ht= !blocks.length ? "a blank day · drag along the ring to tape it"
+      : free<=0 ? "taped edge to edge · hold a strip to peel or bin it"
+      : "pull tape round the ring · tap to swap · hold to peel";
+    if(hint.textContent!==ht) hint.textContent=ht;
   }
 
   function render(){ drawTrack(); drawTapes(); drawSpent(); drawGhosts(); drawBodies(); drawNow(); drawHub(); drawRoll(); drawLedger(); }
