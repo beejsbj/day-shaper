@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#aec8e6"/><stop offset=".55" stop-color="#e3dbe6"/><stop offset="1" stop-color="#f5caa9"/></linearGradient>
+<radialGradient id="orb" cx="38%" cy="30%" r="78%" fx="34%" fy="24%"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#f6f3ef"/><stop offset="1" stop-color="#d6cfc9"/></radialGradient>
+<radialGradient id="sat" cx="35%" cy="28%" r="80%"><stop offset="0" stop-color="#ffe2c0"/><stop offset=".6" stop-color="#f7c292"/><stop offset="1" stop-color="#e9a06d"/></radialGradient>
+<filter id="sh" filterUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#46557f" flood-opacity=".28"/></filter>
+</defs>
+<rect width="512" height="512" rx="0" fill="url(#sky)"/>
+<g transform="translate(256 256) scale(0.86) translate(-256 -256)">
+<circle cx="256" cy="256" r="170" fill="none" stroke="#ffffff" stroke-opacity=".45" stroke-width="3" stroke-dasharray="0 17.8" stroke-linecap="round"/>
+<g fill="none" stroke-width="20" stroke-linecap="round"><path d="M273.8 425.1A170 170 0 0 1 90.7 216.3" stroke="#8a98d4"/><path d="M96.5 197.2A170 170 0 0 1 106.6 174.9" stroke="#f5b793"/><path d="M139.0 132.7A170 170 0 0 1 273.8 86.9" stroke="#8fbd9c"/><path d="M293.5 90.2A170 170 0 0 1 316.9 97.3" stroke="#efcd83"/><path d="M344.8 111.1A170 170 0 0 1 419.0 207.7" stroke="#8fbd9c"/><path d="M425.1 238.2A170 170 0 0 1 425.1 273.8" stroke="#f5b793"/><path d="M388.1 363.0A170 170 0 0 1 344.8 400.9" stroke="#e7a5c0"/></g>
+<circle cx="256" cy="256" r="118" fill="url(#orb)" filter="url(#sh)"/>
+<circle cx="138.1" cy="294.3" r="20" fill="url(#sat)" filter="url(#sh)"/>
+</g>
+</svg>
