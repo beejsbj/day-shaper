@@ -102,7 +102,6 @@
     background-image:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,0) 40%,rgba(0,0,0,.18));
     box-shadow:0 1px 0 rgba(255,255,255,.12) inset, 0 3px 0 -1px rgba(0,0,0,.35), 0 10px 18px -6px rgba(0,0,0,.45);}
   .dymo.sub{font-size:8.5px;letter-spacing:.16em;padding:5px 8px 4px;transform:rotate(4deg) translateX(8px);}
-  #readout.danger .dymo{background-color:#c8102e;}
   #dialWrap.reading #hubText{opacity:0;}
   #readout.aside{top:var(--ry,50%);}
   #dialWrap.reading.aside #hubText{opacity:1;}
@@ -141,8 +140,23 @@
   #carry{position:fixed;left:0;top:0;z-index:45;pointer-events:none;display:none;will-change:transform;}
   #carry svg{display:block;overflow:visible;transition:transform .3s var(--spring), opacity .3s ease;
     filter:drop-shadow(0 16px 14px rgba(40,28,14,.3)) drop-shadow(0 2px 3px rgba(40,28,14,.25));}
-  #carry.doomed svg{transform:scale(.6) rotate(18deg);}
-  #carry.binned svg{transform:scale(.08) rotate(260deg);opacity:0;transition:transform .38s cubic-bezier(.5,0,.8,.4), opacity .38s ease;}
+  #carry.doomed svg{transform:translateY(-30px) scale(.42) rotate(14deg);}
+  /* peeled: the chip arrives still curling off the ring, adhesive side catching the light */
+  #carry.peeling svg{animation:peelIn .34s cubic-bezier(.2,1.25,.4,1) backwards;transform-origin:50% 100%;}
+  @keyframes peelIn{
+    0%{transform:perspective(220px) rotateX(-72deg) scale(.82,.5) translateY(26px);opacity:.25;}
+    55%{opacity:1;}
+    100%{transform:none;}}
+  /* binned: the strip is squeezed in the fist before it becomes a ball */
+  #carry.crush svg{transform:scale(.34,.72) rotate(-26deg);transition:transform .13s cubic-bezier(.5,0,.9,.5);}
+  #carry.ball svg{filter:drop-shadow(0 5px 5px rgba(40,28,14,.32));transition:none;}
+  #gHub{transform-origin:195px 195px;}
+  #gHub.stampDown{animation:stampDown .36s cubic-bezier(.2,1.5,.45,1);}
+  @keyframes stampDown{0%{transform:scale(1.16) rotate(-5deg);opacity:.4;} 60%{transform:scale(.97) rotate(.5deg);opacity:1;} 100%{transform:none;}}
+  .binRing{transform-origin:195px 195px;animation:binTurn 16s linear infinite;}
+  @keyframes binTurn{to{transform:rotate(-360deg);}}
+  #gHub.thunk{animation:thunk .42s cubic-bezier(.3,1.6,.5,1);}
+  @keyframes thunk{0%{transform:scale(1);} 30%{transform:scale(.93);} 100%{transform:scale(1);}}
 
   #rotateHint{position:fixed;inset:0;z-index:100;display:none;background:var(--paper);align-items:center;justify-content:center;
     text-align:center;padding:30px;font:italic 300 22px var(--serif);}
@@ -157,7 +171,10 @@
     .sums{letter-spacing:.14em;}
     #mast{padding-right:16px;}
   }
-  @media (prefers-reduced-motion:reduce){ .roll{transition-duration:.01s !important;} }
+  @media (prefers-reduced-motion:reduce){
+    .roll{transition-duration:.01s !important;}
+    #carry.peeling svg, #gHub.thunk, #gHub.stampDown, .binRing{animation:none;}
+  }
 </style>
 </head>
 <body>
@@ -189,11 +206,24 @@
         <filter id="liftShadow" x="-30%" y="-30%" width="160%" height="160%">
           <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#3a2a14" flood-opacity=".3"/>
         </filter>
-        <!-- inked edges: a whisper of displacement so printed lines aren't vector-perfect -->
-        <filter id="inky" x="-5%" y="-5%" width="110%" height="110%">
-          <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4" result="n"/>
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="1.3"/>
+        <!-- rubber stamp: speckled voids + uneven pressure across the face, a hair of bleed -->
+        <filter id="stamp" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="1.15" numOctaves="2" seed="7" result="speck"/>
+          <feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="1" seed="3" result="press"/>
+          <feColorMatrix in="speck" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -4.2 0 0 0 3.35" result="sa"/>
+          <feColorMatrix in="press" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1.1 0 0 0 1.5" result="pa"/>
+          <feComposite in="sa" in2="pa" operator="arithmetic" k1="1" result="mask"/>
+          <feComposite in="SourceGraphic" in2="mask" operator="in" result="inked"/>
+          <feDisplacementMap in="inked" in2="speck" scale=".9" xChannelSelector="R" yChannelSelector="G"/>
         </filter>
+        <pattern id="binDots" patternUnits="userSpaceOnUse" width="4.2" height="4.2" patternTransform="rotate(15)">
+          <circle cx="2.1" cy="2.1" r=".95" fill="#f15060"/>
+        </pattern>
+        <radialGradient id="ballShade" cx=".38" cy=".34" r=".75">
+          <stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+          <stop offset="1" stop-color="#000" stop-opacity=".3"/>
+        </radialGradient>
+        <path id="sealPath" d="M195 138A57 57 0 1 1 195 252A57 57 0 1 1 195 138"/>
       </defs>
       <g id="gTrack"></g>
       <g id="gTape"></g>
@@ -535,15 +565,23 @@
     tears[id]={end,t0:performance.now()};
     // fibres and flakes spit off the fresh edge, away from the strip, and fall
     const t=end==="b"?b.start+b.len:b.start, th=hourToTheta(t), dir=end==="b"?1:-1, col=typeOf(b.type).color;
-    const tx=Math.cos(th)*dir, ty=Math.sin(th)*dir, seed=(Math.random()*1e9)>>>0;
-    for(let i=0;i<9;i++){
-      const r=R_IN+4+rnd(seed,i)*(TAPE_W-8), p=polar(th,r), sp=45+rnd(seed,i+20)*80, rad=(rnd(seed,i+40)-.5)*60;
-      flecks.push({x:p.x,y:p.y, vx:tx*sp+Math.sin(th)*rad, vy:ty*sp-Math.cos(th)*rad-25,
-        rot:rnd(seed,i+60)*360, vr:(rnd(seed,i+80)-.5)*720, len:1.6+rnd(seed,i+90)*2.6,
-        fibre:i%3!==0, col, t0:performance.now(), life:420+rnd(seed,i+100)*300});
+    const tx=Math.cos(th)*dir, ty=Math.sin(th)*dir;
+    spawnFlecks(9,col,(i,rn)=>{ const r=R_IN+4+rn(0)*(TAPE_W-8), p=polar(th,r), sp=45+rn(1)*80, rad=(rn(2)-.5)*60;
+      return {x:p.x,y:p.y, vx:tx*sp+Math.sin(th)*rad, vy:ty*sp-Math.cos(th)*rad-25}; });
+  }
+  function spawnFlecks(n,col,place){
+    if(RM.matches) return;
+    const seed=(Math.random()*1e9)>>>0, now=performance.now();
+    for(let i=0;i<n;i++){
+      const rn=(k)=>rnd(seed,i+k*31);
+      flecks.push({...place(i,rn), rot:rn(3)*360, vr:(rn(4)-.5)*720, len:1.6+rn(5)*2.6,
+        fibre:i%3!==0, col, t0:now, life:420+rn(6)*300});
     }
     kickRaf();
   }
+  // peeling: the grabbed end curls up off the ring, showing its paler adhesive side
+  const PEEL_MS=360, peels={};
+  function peelAt(id,end){ if(RM.matches) return; peels[id]={end,t0:performance.now()}; kickRaf(); }
   function drawFx(now){
     clear(gFx);
     for(let i=flecks.length-1;i>=0;i--){
@@ -557,6 +595,7 @@
       e.setAttribute("opacity",o.toFixed(2)); gFx.appendChild(e);
     }
     for(const id in tears) if(now-tears[id].t0>TEAR_MS) delete tears[id];
+    for(const id in peels) if(now-peels[id].t0>PEEL_MS) delete peels[id];
     // the new roll riding the wipe front, turning as it lays tape
     for(const id in retapes){
       const rt=retapes[id], b=byId(id);
@@ -566,7 +605,7 @@
       const gr=rollGlyph(ptAt(pos,R),b.type,(pos-b.start)/24*TAU*R/rr,rr); gr.setAttribute("opacity",fade.toFixed(2));
       gFx.appendChild(gr);
     }
-    return flecks.length>0 || Object.keys(tears).length>0 || Object.keys(retapes).length>0;
+    return flecks.length>0 || Object.keys(tears).length>0 || Object.keys(retapes).length>0 || Object.keys(peels).length>0;
   }
 
   function drawTapes(){
@@ -601,6 +640,18 @@
       }
       // crinkle sheen: tape catches light in a soft band near its outer edge
       grp.appendChild(el("path",{d:sector(b.start+.04,b.start+b.len-.04,rOut-9,rOut-4),fill:"#fff",opacity:.13+sp.lift*.12}));
+      const pl=peels[b.id];
+      if(pl){
+        const k=clamp((fxNow-pl.t0)/PEEL_MS,0,1), grow=smooth(0,.55,k), o=1-smooth(.6,1,k);
+        const w=Math.min(b.len*.55,1.3)*grow, e0=pl.end==="a"?b.start:b.start+b.len, e1=pl.end==="a"?e0+w:e0-w;
+        if(w>.02){
+          const lo=Math.min(e0,e1), hi=Math.max(e0,e1), fold=ptAt(e1,rIn), fold2=ptAt(e1,rOut);
+          grp.appendChild(el("path",{d:sector(lo,hi,rIn+.5,rOut-.5),opacity:(.78*o).toFixed(2)},{fill:"var(--card)"}));
+          grp.appendChild(el("path",{d:sector(lo,hi,rIn+.5,rOut-.5),fill:"url(#pat_"+b.type+")",opacity:(.22*o).toFixed(2)}));
+          grp.appendChild(el("line",{x1:f1(fold.x),y1:f1(fold.y),x2:f1(fold2.x),y2:f1(fold2.y),"stroke-width":1.4,
+            "stroke-linecap":"round",opacity:(.35*o).toFixed(2)},{stroke:"rgba(40,28,14,.9)"}));
+        }
+      }
       gTape.appendChild(grp);
 
       // label: glyph + name set along the curve, flipped upright on the lower half
@@ -683,31 +734,46 @@
 
   function drawHub(){
     clear(gHub);
-    const armed=drag&&drag.armDelete;
-    // a rubber-stamped seal: double ring, time in soft serif, what's left of the day beneath
+    const armed=drag&&drag.armDelete, carrying=drag&&drag.mode==="carry";
+    // a rubber-stamped seal, pressed a hair off square: double ring, time in soft serif,
+    // what's left of the day beneath. The ink is speckled and uneven, like a real stamp.
     gHub.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R},{fill:"var(--card)"}));
-    gHub.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R-3,fill:"none","stroke-width":armed?1.6:1.1,
-      "stroke-dasharray":armed?"5 4":"none",filter:"url(#inky)"},{stroke:armed?"#f15060":"var(--ink)",opacity:armed?1:.75}));
-    gHub.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R-7,fill:"none","stroke-width":.5},{stroke:"var(--ink)",opacity:.4}));
-    const txt=el("g",{id:"hubText"}); txt.style.transition="opacity .15s";
     if(armed){
-      txt.appendChild(iconEl("cut",CX,CY-8,26,"#f15060"));
-      const l=el("text",{x:CX,y:CY+22,"text-anchor":"middle"},{font:"500 8px var(--mono)",letterSpacing:".22em",fill:"#f15060"});
-      l.textContent="LET IT GO"; txt.appendChild(l);
-    } else {
-      const k=el("text",{x:CX,y:CY-27,"text-anchor":"middle"},{font:"500 7.5px var(--mono)",letterSpacing:".28em",fill:"var(--ink)",opacity:.55});
-      k.textContent= isDayAt(NOW) ? "☼  NOW" : "☾  NOW"; txt.appendChild(k);
-      const big=el("text",{x:CX,y:CY+4,"text-anchor":"middle","dominant-baseline":"central"},
-        {font:"italic 340 40px var(--serif)",fontVariationSettings:'"opsz" 144, "SOFT" 100',letterSpacing:"-.02em",fill:"var(--ink)"});
-      big.textContent=fmt(NOW); txt.appendChild(big);
-      const f=freeHours(), s=el("text",{x:CX,y:CY+33,"text-anchor":"middle"},
-        {font:"500 7.5px var(--mono)",letterSpacing:".2em",fill:f<.5?"#f15060":"var(--ink)",opacity:f<.5?1:.55});
-      s.textContent=durText(f).toUpperCase()+" UNTAPED"; txt.appendChild(s);
+      // the bin: the seal re-inks itself as a red VOID stamp over a riso tint of dots
+      gHub.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R-3,fill:"url(#binDots)",opacity:.28}));
+      const st=el("g",{filter:"url(#stamp)",transform:"rotate(-7 "+CX+" "+CY+")"});
+      st.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R-3,fill:"none",stroke:"#f15060","stroke-width":2.6}));
+      st.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R-21,fill:"none",stroke:"#f15060","stroke-width":1.1}));
+      // the ring is rebuilt on every render; a clock-phased delay keeps its turn continuous
+      const ring=el("g",{class:"binRing"},{animationDelay:-(performance.now()%16000).toFixed(0)+"ms"}), rt=el("text",{},{font:"500 7.6px var(--mono)",fill:"#f15060"});
+      const tp=el("textPath",{href:"#sealPath",textLength:"350",lengthAdjust:"spacing"});
+      tp.setAttributeNS("http://www.w3.org/1999/xlink","xlink:href","#sealPath");
+      tp.textContent="LET GO TO BIN ✂ PULL OUT TO KEEP ✂ "; rt.appendChild(tp); ring.appendChild(rt); st.appendChild(ring);
+      st.appendChild(iconEl("cut",CX,CY-13,22,"#f15060"));
+      const t=el("text",{x:CX,y:CY+14,"text-anchor":"middle","dominant-baseline":"central"},
+        {font:"italic 500 25px var(--serif)",fontVariationSettings:'"opsz" 144, "SOFT" 0',letterSpacing:".02em",fill:"#f15060"});
+      t.textContent="bin it"; st.appendChild(t);
+      gHub.appendChild(st);
+      return;
     }
+    const st=el("g",{filter:"url(#stamp)",transform:"rotate(-1.6 "+CX+" "+CY+")"});
+    st.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R-3,fill:"none","stroke-width":1.5},{stroke:"var(--ink)",opacity:.8}));
+    st.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R-7,fill:"none","stroke-width":.6},{stroke:"var(--ink)",opacity:.5}));
+    // while a strip is carried the seal reads as a slot: a dashed red lip says "drop here to bin"
+    if(carrying) st.appendChild(el("circle",{cx:CX,cy:CY,r:HUB_R-12,fill:"none",stroke:"#f15060","stroke-width":1,"stroke-dasharray":"3 3.5",opacity:.7}));
+    gHub.appendChild(st);
+    const txt=el("g",{id:"hubText",filter:"url(#stamp)",transform:"rotate(-1.6 "+CX+" "+CY+")"}); txt.style.transition="opacity .15s";
+    const k=el("text",{x:CX,y:CY-27,"text-anchor":"middle"},{font:"500 7.5px var(--mono)",letterSpacing:".28em",fill:"var(--ink)",opacity:.6});
+    k.textContent= isDayAt(NOW) ? "☼  NOW" : "☾  NOW"; txt.appendChild(k);
+    const big=el("text",{x:CX,y:CY+4,"text-anchor":"middle","dominant-baseline":"central"},
+      {font:"italic 340 40px var(--serif)",fontVariationSettings:'"opsz" 144, "SOFT" 100',letterSpacing:"-.02em",fill:"var(--ink)"});
+    big.textContent=fmt(NOW); txt.appendChild(big);
+    const f=freeHours(), s=el("text",{x:CX,y:CY+33,"text-anchor":"middle"},
+      {font:"500 7.5px var(--mono)",letterSpacing:".2em",fill:f<.5?"#f15060":"var(--ink)",opacity:f<.5?1:.6});
+    s.textContent=durText(f).toUpperCase()+" UNTAPED"; txt.appendChild(s);
     gHub.appendChild(txt);
   }
 
-  // the roll you're pulling from, riding the leading end while drawing
   /* a roll of tape at p, turned by spin (radians). Built at the origin and rotated as one,
      so the pattern, the wound layers, the core notch and the glint all visibly turn. */
   function rollGlyph(p,type,spin,rr){
@@ -1075,23 +1141,69 @@
     drag.restOrigin=new Map(drag.rest.map(x=>[x.id,x.start]));
     drag.mode="carry"; drag.active=true; drag.slot=null; drag.armDelete=false;
     clearNeighborLift(); setLift(b.id,1);
+    if(crumpleAnim){ crumpleAnim.cancel(); crumpleAnim=null; }
     const w=Math.round(clamp(b.len*26,46,150)); carryEl._w=w;
-    carryEl.innerHTML=stripSVG(b,w); carryEl.className=""; carryEl.style.display="block";
+    carryEl.innerHTML=stripSVG(b,w); carryEl.className=RM.matches?"":"peeling"; carryEl.style.display="block";
+    peelAt(b.id,clamp(drag.grabOffset,0,b.len)<b.len/2?"a":"b");
     placeCarryEl(drag.lastX,drag.lastY);
     haptic(); render();
     showRead(fmt(b.start)+"–"+fmt(b.start+b.len),"peeled · stick it anywhere");
   }
+  // a crumpled ball of the strip's own tape: a seeded lumpy outline with a few creases
+  function ballSVG(b){
+    const seed=hash(b.id), N=14, C=22, pts=[];
+    for(let i=0;i<N;i++){ const a=i/N*TAU, r=14+rnd(seed,i)*5.5; pts.push([C+r*Math.cos(a),C+r*Math.sin(a)]); }
+    const d="M"+pts.map(p=>f1(p[0])+" "+f1(p[1])).join("L")+"Z";
+    let crease="";
+    for(let i=0;i<6;i++){ const a=rnd(seed,i+30)*TAU, r=6+rnd(seed,i+40)*11, a2=a+1.5+rnd(seed,i+50)*1.8, m=a+.7+rnd(seed,i+60)*.4;
+      crease+="M"+f1(C+r*Math.cos(a))+" "+f1(C+r*Math.sin(a))+"L"+f1(C+4*Math.cos(m))+" "+f1(C+4*Math.sin(m))
+        +"L"+f1(C+(r-2)*Math.cos(a2))+" "+f1(C+(r-2)*Math.sin(a2)); }
+    return '<svg width="44" height="44" viewBox="0 0 44 44"><path d="'+d+'" fill="url(#pat_'+b.type+')"/>'
+      +'<path d="'+d+'" fill="url(#ballShade)"/>'
+      +'<path d="'+crease+'" fill="none" stroke="rgba(0,0,0,.3)" stroke-width=".9" stroke-linejoin="round"/>'
+      +'<path d="'+crease+'" fill="none" stroke="rgba(255,255,255,.5)" stroke-width=".6" transform="translate(.9 -.9)"/>'
+      +'<path d="'+d+'" fill="none" stroke="rgba(0,0,0,.2)" stroke-width=".8"/></svg>';
+  }
+  let crumpleAnim=null;
+  // squeezed in the fist, balled up, and dropped through the seal
+  function crumpleIntoHub(b,x,y){
+    const H=toScreen({x:CX,y:CY});
+    if(RM.matches||!carryEl.animate){ carryEl.style.display="none"; return; }
+    carryEl.classList.remove("doomed"); carryEl.classList.add("crush");
+    setTimeout(()=>{
+      if(drag&&drag.mode==="carry") return;         // a new peel already owns the carry layer
+      carryEl.innerHTML=ballSVG(b); carryEl.className="ball";
+      const cx=x-22, cy=y-65;
+      const a=crumpleAnim=carryEl.animate([
+        {transform:"translate("+cx+"px,"+cy+"px) scale(1.2) rotate(0deg)"},
+        {transform:"translate("+cx+"px,"+(cy-12)+"px) scale(1) rotate(70deg)",offset:.22},
+        {transform:"translate("+(H.x-22)+"px,"+(H.y-22)+"px) scale(.7) rotate(250deg)",offset:.72},
+        {transform:"translate("+(H.x-22)+"px,"+(H.y-22)+"px) scale(.78) rotate(262deg)",offset:.8},
+        {transform:"translate("+(H.x-22)+"px,"+(H.y-22)+"px) scale(0) rotate(330deg)",opacity:0}
+      ],{duration:640,easing:"cubic-bezier(.45,0,.55,1)",fill:"forwards"});
+      a.onfinish=()=>{ crumpleAnim=null; if(drag&&drag.mode==="carry") return; carryEl.style.display="none"; a.cancel(); hubThunk(b); };
+    },130);
+  }
+  function hubThunk(b){
+    gHub.classList.remove("thunk"); void gHub.getBoundingClientRect(); gHub.classList.add("thunk");
+    setTimeout(()=>gHub.classList.remove("thunk"),450);
+    haptic();
+    // a puff of paper dust out of the slot
+    spawnFlecks(10,typeOf(b.type).color,(i,rn)=>{ const a=rn(0)*TAU, sp=50+rn(1)*70;
+      return {x:CX+Math.sin(a)*8, y:CY-Math.cos(a)*8, vx:Math.sin(a)*sp, vy:-Math.cos(a)*sp-30}; });
+  }
   function carryMove(e,r,rawT){
     placeCarryEl(e.clientX,e.clientY);
     const b=drag.block, armed=r<HUB_DELETE;
-    if(armed!==drag.armDelete){ drag.armDelete=armed; carryEl.classList.toggle("doomed",armed); if(armed) hapticWarn(); }
+    if(armed!==drag.armDelete){ drag.armDelete=armed; carryEl.classList.toggle("doomed",armed);
+      if(armed){ hapticWarn(); if(!RM.matches){ gHub.classList.remove("stampDown"); void gHub.getBoundingClientRect(); gHub.classList.add("stampDown"); } }
+      else gHub.classList.remove("stampDown"); }
     if(armed){
       for(const x of drag.rest) x.start=drag.restOrigin.get(x.id);
       blocks=drag.rest.slice(); drag.slot=null;
-      READ.classList.add("danger"); showRead("into the bin?",typeOf(b.type).name+" · pull back out to keep");
-      render(); return;
+      // the seal itself says it now (a red bin stamp); the Dymo label steps out of its way
+      hideRead(); render(); return;
     }
-    READ.classList.remove("danger");
     carryPlace(rawT);
   }
   function carryPlace(rawT){
@@ -1120,7 +1232,7 @@
   function endDrag(cancel){
     if(!drag) return;
     const d=drag; drag=null; clearTimeout(d.hold);
-    READ.classList.remove("danger"); clear(gGhost); clear(gRoll);
+    clear(gGhost); clear(gRoll);
     if(!cancel&&!d.active&&(d.mode==="move"||d.mode==="resize")){ settleAllLifts(); render(); openPicker(d.id,false); return; }
     if(d.mode==="draw"){
       if(d.newId&&!cancel){ hapticTear(); bump(d.newId,1.6); tearAt(d.newId,d.cur>d.anchor?"b":"a");
@@ -1132,7 +1244,7 @@
       if(cancel){ blocks=[...d.rest,d.block]; for(const x of blocks){ const o=d.origin.get(x.id); if(o!==undefined) x.start=o; } sortBlocks(); carryEl.style.display="none"; }
       else if(d.armDelete){
         blocks=d.rest; delete springs[d.block.id]; hapticWarn();
-        carryEl.classList.add("binned"); setTimeout(()=>{ carryEl.style.display="none"; },380);
+        crumpleIntoHub(d.block,d.lastX,d.lastY); gHub.classList.remove("stampDown");
       } else {
         carryEl.style.display="none";
         for(const x of blocks) bump(x.id,.5); bump(d.block.id,1.8); haptic();
@@ -1254,7 +1366,7 @@
       sp.lift+=(sp.liftTarget-sp.lift)*(sp.lift<sp.liftTarget?.34:.14);
       if(Math.abs(sp.liftTarget-sp.lift)<.003) sp.lift=sp.liftTarget; else active=true;
     }
-    const now=performance.now(), fxLive=Object.keys(tears).length>0||flecks.length>0||Object.keys(retapes).length>0||gFx.firstChild;
+    const now=performance.now(), fxLive=Object.keys(tears).length>0||flecks.length>0||Object.keys(retapes).length>0||Object.keys(peels).length>0||gFx.firstChild;
     if(fxLive&&drawFx(now)) active=true;
     if(active||fxLive){ drawTapes(); if(drag) drawGhosts(); }
     if(active) requestAnimationFrame(tick); else rafOn=false;
