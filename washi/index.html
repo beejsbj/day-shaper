@@ -67,10 +67,12 @@
   #mast{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:20px 20px 0 24px;flex:0 0 auto;}
   .kicker{font:500 8.5px/1 var(--mono);letter-spacing:.24em;text-transform:uppercase;color:var(--ink-2);}
   .kicker b{color:var(--red);font-weight:500;}
-  #dayname{font:italic 300 44px/.92 var(--serif);font-variation-settings:"opsz" 144,"SOFT" 100;
+  #dayname{font:italic 300 clamp(40px,11.4vw,50px)/.92 var(--serif);font-variation-settings:"opsz" 144,"SOFT" 100;
     letter-spacing:-.025em;margin-top:8px;}
   #dateline{font:400 9.5px/1.55 var(--mono);color:var(--ink-2);margin-top:7px;letter-spacing:.03em;}
-  #dateline i{font:italic 400 12px var(--serif);color:var(--ink);letter-spacing:0;}
+  #dateline i{font:italic 400 12.5px var(--serif);color:var(--ink);letter-spacing:0;}
+  /* the hours of light carry a swatch of the rim's yellow daylight bar, so the two read as one key */
+  #dateline .lit{display:inline-block;width:13px;height:3px;background:var(--yellow);vertical-align:middle;margin:-2px 6px 0 0;mix-blend-mode:var(--tape-blend);}
 
   /* frame tabs: three stamped paper labels; the chosen one is inked */
   #frames{display:flex;flex-direction:column;align-items:flex-end;gap:5px;margin-top:2px;}
@@ -117,7 +119,7 @@
   .sums em{font:italic 400 15px var(--serif);letter-spacing:0;color:var(--ink);text-transform:none;margin-right:4px;}
   .sums .low em{color:var(--red);}
   #hint{text-align:center;padding-top:7px;margin-top:7px;border-top:1px dashed var(--ink-3);
-    font:400 8px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;}
+    font:400 8px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);opacity:.78;white-space:nowrap;}
 
   /* ---- picker: tape rolls roll out of the section ---- */
   #picker{position:fixed;inset:0;z-index:50;display:none;}
@@ -176,6 +178,11 @@
   #rotateHint{position:fixed;inset:0;z-index:100;display:none;background:var(--paper);align-items:center;justify-content:center;
     text-align:center;padding:30px;font:italic 300 22px var(--serif);}
   @media (orientation:landscape) and (max-height:500px){ #rotateHint{display:flex;} #stage{display:none;} }
+  /* tall, wide sheets (430x932): a touch more air and a larger ledger sum */
+  @media (min-width:410px) and (min-height:880px){
+    #mast{padding-top:26px;} #dateline{margin-top:9px;}
+    .sums em{font-size:17px;}
+  }
   @media (max-height:700px){
     #mast{padding-top:12px;} #dayname{font-size:36px;margin-top:5px;} #dateline{margin-top:4px;}
     #ledger{padding-top:8px;} #hint{margin-top:5px;padding-top:5px;}
@@ -547,7 +554,7 @@
         const clearOf=Math.min(...stamps.map(s=>smooth(18,28,Math.hypot(s.x-lp.x,s.y-lp.y))));
         if(clearOf<.02) continue;
         const tx=el("text",{x:f1(lp.x),y:f1(lp.y),"text-anchor":"middle","dominant-baseline":"central"},
-          {font:(h%12===0?"500 ":"400 ")+"8.5px var(--mono)",letterSpacing:".06em",fill:"var(--ink)",opacity:(h%6===0?.85:.5)*clearOf});
+          {font:(h%6===0?"500 ":"400 ")+(h%6===0?"9.5px":"8.5px")+" var(--mono)",letterSpacing:".06em",fill:"var(--ink)",opacity:(h%6===0?.85:.55)*clearOf});
         tx.textContent=String(h).padStart(2,"0"); gTrack.appendChild(tx);
       }
     }
@@ -875,7 +882,7 @@
     for(let h=0;h<=24;h++){
       strip.appendChild(el("line",{x1:f1(x(h)),y1:y1,x2:f1(x(h)),y2:y1+(h%6===0?6:3),"stroke-width":.6,opacity:h%6===0?.7:.35},ink));
       if(h%6===0){ const t=el("text",{x:f1(x(h)),y:y1+13,"text-anchor":h===0?"start":h===24?"end":"middle"},
-        {font:"400 6.5px var(--mono)",fill:"var(--ink)",opacity:.55}); t.textContent=String(h).padStart(2,"0"); strip.appendChild(t); }
+        {font:(h%12===0?"500 ":"400 ")+"7.5px var(--mono)",fill:"var(--ink)",opacity:h%12===0?.7:.55}); t.textContent=String(h).padStart(2,"0"); strip.appendChild(t); }
     }
     // a blank day: a pencilled outline where the tape will go
     if(!blocks.length) strip.appendChild(el("rect",{x:1.5,y:y0+.5,width:W-3,height:y1-y0-1,fill:"none","stroke-width":.8,"stroke-dasharray":"3 3",opacity:.35},ink));
@@ -1024,7 +1031,7 @@
     const D=((sun.sunset-sun.sunrise)%24+24)%24;
     $("dateline").innerHTML = sun.polar
       ? "<i>"+date+"</i> · "+(sun.polar==="day"?"the sun never sets":"the sun never rises")
-      : "<i>"+date+"</i> — rise "+fmt(sun.sunrise)+" · set "+fmt(sun.sunset)+"<br>"+durText(D)+" of light";
+      : "<i>"+date+"</i> — rise "+fmt(sun.sunrise)+" · set "+fmt(sun.sunset)+"<br><span class=\"lit\"></span>"+durText(D)+" of light";
   }
 
   /* ---------------- feedback ---------------- */
