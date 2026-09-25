@@ -21,6 +21,8 @@ export const snapUp = (t) => Math.ceil(t / SNAP - EPS) * SNAP;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 /** round to the second so repeated edits never accumulate float drift */
 const tidy = (t) => Math.round(t * 3600) / 3600;
+/** a ring position, tidied, and never 24.0 (23:59:59.6 rounds up to midnight, which is 0) */
+const place = (t) => { const v = tidy(mod24(t)); return v >= DAY ? 0 : v; };
 
 export const totalLen = (blocks) => blocks.reduce((s, b) => s + b.len, 0);
 export const freeHours = (blocks) => Math.max(0, DAY - totalLen(blocks));
@@ -71,8 +73,8 @@ function chainFrom(blocks, skipId, pivot) {
 /* Pin `pinned` at [start, start+len) and let the chain yield around it. */
 function settle(pinned, start, len, chain) {
   const pos = fitChain(chain.map((c) => ({ len: c.b.len, target: c.target })), start + len, start + DAY);
-  const out = [{ ...pinned, start: tidy(mod24(start)), len: tidy(len) }];
-  chain.forEach((c, k) => out.push({ ...c.b, start: tidy(mod24(pos[k])) }));
+  const out = [{ ...pinned, start: place(start), len: tidy(len) }];
+  chain.forEach((c, k) => out.push({ ...c.b, start: place(pos[k]) }));
   return sortBlocks(out);
 }
 
@@ -111,7 +113,7 @@ export function resizeStart(snapshot, id, desiredStart) {
 /** Rotate the whole day by `delta` hours (snapped). */
 export function shiftAll(snapshot, delta) {
   const d = snap(delta);
-  return sortBlocks(snapshot.map((b) => ({ ...b, start: tidy(mod24(b.start + d)) })));
+  return sortBlocks(snapshot.map((b) => ({ ...b, start: place(b.start + d) })));
 }
 
 export function removeBlock(blocks, id) {
@@ -171,14 +173,9 @@ export function findSpot(blocks, len, from) {
   let best = null;
   for (const g of gaps(blocks)) {
     const rel = mod24(from - g.start);
-    let s = g.start, avail = g.len;
-    if (rel < g.len) {
-      const skip = snapUp(rel);
-      s = g.start + skip; avail = g.len - skip;
-    } else {
-      const aligned = snapUp(g.start);
-      avail = g.len - (aligned - g.start); s = aligned;
-    }
+    // earliest quarter hour in the gap, at or after `from` when `from` falls inside it
+    const s = snapUp(rel < g.len ? g.start + rel : g.start);
+    const avail = g.start + g.len - s;
     if (avail + EPS >= len) {
       const dist = mod24(s - from);
       if (!best || dist < best.dist) best = { start: mod24(s), len, dist };
@@ -223,7 +220,7 @@ export function sanitizeBlocks(list, validTypes) {
     if (validTypes && !validTypes.includes(raw.type)) continue;
     const id = typeof raw.id === "string" && raw.id && !ids.has(raw.id) ? raw.id : uid();
     ids.add(id);
-    out.push({ id, type: raw.type, start: tidy(mod24(start)), len: tidy(len) });
+    out.push({ id, type: raw.type, start: place(start), len: tidy(len) });
   }
   out = sortBlocks(out);
   while (out.length && totalLen(out) > DAY + EPS) out.pop();

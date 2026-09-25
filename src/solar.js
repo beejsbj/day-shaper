@@ -65,7 +65,10 @@ const ZONE_LAT = {
 };
 
 export function guessLocation(date = new Date()) {
-  const lon = (-date.getTimezoneOffset() / 60) * 15;
+  // standard (non-summer) offset: summer time would put the sun an hour early all season
+  const y = date.getFullYear();
+  const std = Math.max(new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset());
+  const lon = (-std / 60) * 15 || 0; // "|| 0": Greenwich gives -0
   let zone = "";
   try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { /* no Intl */ }
   if (zone in ZONE_LAT) return { lat: ZONE_LAT[zone], lon, approx: true };

@@ -181,3 +181,14 @@ test("property: any sequence of edits keeps the day valid and conserves lengths"
     }
   }
 });
+
+test("a start that rounds up to midnight lands on 0, never 24", () => {
+  const out = sanitizeBlocks([{ type: "work", start: 23.99999, len: 1 }], ["work"]);
+  assert.equal(out[0].start, 0);
+  assert.ok(isValid(out));
+});
+
+test("findSpot keeps to the absolute quarter-hour grid in off-grid gaps", () => {
+  const day = [B("a", 6.4, 1), B("b", 8.4, 2)];          // free 7.4 → 8.4
+  assert.deepEqual(findSpot(day, 0.75, 7.5), { start: 7.5, len: 0.75 });
+});

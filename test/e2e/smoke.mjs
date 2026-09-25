@@ -165,9 +165,11 @@ await check("drop a stone on the ring", async (page) => {
 await check("tap a stone to add it in the next free gap", async (page) => {
   await page.goto(BASE + "?preview&at=10:00");
   await openShape(page);
+  const n = (await state(page)).blocks.length;
   await page.click('.stone[data-type="move"]');
   await page.waitForTimeout(100);
   const s = await state(page);
+  assert.equal(s.blocks.length, n + 1, "one tap, one block");
   const added = s.blocks.find((b) => b.id === s.selectedId);
   assert.equal(added.type, "move");
   assert.equal(added.start, 22); // every gap before 10 PM is under an hour; 22:00–23:30 is the first that fits
@@ -189,6 +191,48 @@ await check("keyboard: arrows move, shift-arrows stretch, delete removes", async
   assert.ok(!(await state(page)).blocks.some((b) => b.id === work.id));
   await page.keyboard.press("Control+z");
   assert.ok((await state(page)).blocks.some((b) => b.id === work.id));
+});
+
+await check("assistive activation: stones answer click(), focus follows the mode", async (page) => {
+  await page.goto(BASE + "?preview&at=10:00");
+  await page.focus("#shapeBtn");
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(500);
+  assert.equal(await page.evaluate(() => document.activeElement.id), "doneBtn", "focus moved off the panel that went inert");
+  const n = (await state(page)).blocks.length;
+  await page.evaluate(() => document.querySelector('.stone[data-type="eat"]').click()); // what VoiceOver / switch access send
+  assert.equal((await state(page)).blocks.length, n + 1);
+  const roles = await page.$$eval("#dial .blk", (g) => g.map((x) => x.getAttribute("role")));
+  assert.ok(roles.every((r) => r === "slider"));
+  await page.keyboard.press("Escape"); // deselect
+  await page.keyboard.press("Escape"); // leave shaping
+  await page.waitForTimeout(400);
+  assert.equal(await page.evaluate(() => document.activeElement.id), "shapeBtn");
+});
+
+await check("Escape mid-drag lets go without changing the day; undo waits for the hand", async (page) => {
+  await page.goto(BASE + "?preview&at=10:00");
+  await openShape(page);
+  const before = (await state(page)).blocks.map((b) => b.start);
+  const p0 = await pt(page, 10.75, 148);
+  await page.mouse.move(p0.x, p0.y);
+  await page.mouse.down();
+  for (let k = 1; k <= 6; k++) { const q = await pt(page, 10.75 + k * 0.25, 148); await page.mouse.move(q.x, q.y); }
+  await page.keyboard.press("Control+z");
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+  await page.waitForTimeout(100);
+  const s = await state(page);
+  assert.equal(s.mode, "shape");
+  assert.deepEqual(s.blocks.map((b) => b.start), before);
+});
+
+await check("a broken share link never wipes the day", async (page) => {
+  await page.goto(BASE);
+  const n = (await state(page)).blocks.length;
+  await page.goto(BASE + "?day=s10.0");
+  await page.waitForTimeout(300);
+  assert.equal((await state(page)).blocks.length, n);
 });
 
 await check("a shared link opens the same day, and persists", async (page) => {
@@ -224,6 +268,20 @@ await check("junk in storage never reaches the screen", async (page) => {
   const b = (await state(page)).blocks;
   assert.ok(b.length >= 1 && b.every((x) => Number.isFinite(x.start)));
 });
+
+// DST: New York springs forward on 8 March 2026 — ?at=10:00 must still read 10:00
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: "America/New_York" });
+  const page = await ctx.newPage();
+  try {
+    await page.clock.install({ time: new Date("2026-03-08T15:00:00Z") });
+    await page.goto(BASE + "?preview&at=10:00");
+    await page.waitForTimeout(300);
+    assert.equal((await page.textContent("#dText .o-big")).trim(), "10:00");
+    results.push(["ok", "?at= reads true wall-clock time on a DST day"]);
+  } catch (e) { results.push(["FAIL", "?at= reads true wall-clock time on a DST day", e.message.split("\n").slice(0, 4).join("\n")]); }
+  await ctx.close();
+}
 
 await browser.close();
 server.close();

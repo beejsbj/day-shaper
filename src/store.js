@@ -74,5 +74,11 @@ export function decodeDay(str) {
   const re = /([swemr])(\d{1,2})\.(\d{1,2})/g;
   let m;
   while ((m = re.exec(str))) out.push({ type: DECODE[m[1]], start: +m[2] / 4, len: +m[3] / 4 });
-  return out.length ? sanitizeBlocks(out, TYPE_IDS) : null;
+  const day = out.length ? sanitizeBlocks(out, TYPE_IDS) : null;
+  return day && day.length ? day : null; // a link that decodes to nothing must never wipe a day
+}
+
+/** False in private modes and locked-down browsers where nothing will persist. */
+export function storageWorks() {
+  try { localStorage.setItem("dayshaper.probe", "1"); localStorage.removeItem("dayshaper.probe"); return true; } catch { return false; }
 }

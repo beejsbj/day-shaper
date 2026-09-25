@@ -64,3 +64,14 @@ test("a day survives a round trip through a link", () => {
   assert.deepEqual(back.map((b) => [b.type, b.start, b.len]), day.map((b) => [b.type, b.start, b.len]).sort((a, b) => a[1] - b[1]));
   assert.equal(decodeDay("garbage"), null);
 });
+
+test("the live clock never runs ahead of the minute", async () => {
+  const { fmtNow } = await import("../src/time.js");
+  assert.equal(fmtNow(9 + 41.5 / 60, false), "09:41");
+  assert.equal(fmtNow(23 + 59.75 / 60, true), "11:59 PM");
+});
+
+test("a link that decodes to nothing is not a day", () => {
+  assert.equal(decodeDay("s10.0"), null);
+  assert.equal(decodeDay("x"), null);
+});

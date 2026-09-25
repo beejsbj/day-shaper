@@ -9,8 +9,8 @@ import { TYPES, typeOf, sampleDay } from "./types.js";
 import { skyAt } from "./sky.js";
 import { sunForDate, guessLocation } from "./solar.js";
 import { describe, readings, shapedSummary } from "./context.js";
-import { hourOf, detectHour12, clockParts, fmtTime, fmtRange, fmtDur } from "./time.js";
-import { loadBlocks, saveBlocks, loadPrefs, savePrefs, createHistory, encodeDay, decodeDay } from "./store.js";
+import { hourOf, detectHour12, clockParts, fmtTime, fmtNow, fmtRange, fmtDur } from "./time.js";
+import { loadBlocks, saveBlocks, loadPrefs, savePrefs, createHistory, encodeDay, decodeDay, storageWorks } from "./store.js";
 import { installSprite, icon } from "./icons.js";
 import { mixDeep, lighten, luminance } from "./color.js";
 import { createScene } from "./scene.js";
@@ -45,13 +45,17 @@ const fixedAt = (() => {
 })();
 
 /* ---------------- time & sun ---------------- */
+/** The wall-clock moment `h` hours after the start of `day` (h may exceed 24). */
+function wallClock(day, h) {
+  const d = new Date(day);
+  d.setDate(d.getDate() + Math.floor(h / 24));
+  const hh = ((h % 24) + 24) % 24, secs = Math.round((hh % 1) * 3600);
+  d.setHours(Math.floor(hh), Math.floor(secs / 60), secs % 60, 0);
+  return d;
+}
 function clockDate() {
-  if (play) {
-    const k = Math.min(1, (performance.now() - play.t0) / play.dur);
-    const base = new Date(play.day); base.setHours(0, 0, 0, 0);
-    return new Date(base.getTime() + (play.from + k * 24) * 3600e3);
-  }
-  if (fixedAt != null) { const d = new Date(); d.setHours(0, 0, 0, 0); return new Date(d.getTime() + fixedAt * 3600e3); }
+  if (play) return wallClock(play.day, play.from + Math.min(1, (performance.now() - play.t0) / play.dur) * 24);
+  if (fixedAt != null) return wallClock(Date.now(), fixedAt);
   return new Date();
 }
 let sun, sunKey = "";
@@ -187,15 +191,25 @@ function frame(now) {
 
   draw(date, t, springs.values);
 
-  // idle life: while you are inside a block the orb is clay, and clay breathes (slowly, ~12 fps)
-  const breathing = !reduceMotion.matches && document.visibilityState === "visible" && mode === "live" && orbMix.amt > 0.01;
+  clearTimeout(breathTimer);
   if (busy) request();
-  else if (breathing) { clearTimeout(idleTimer); idleTimer = setTimeout(request, 80); }
+  else if (breathing()) breathTimer = setTimeout(breathe, 66);
 }
-let idleTimer = 0;
+/* Idle life: while you are inside a block the orb is clay, and clay breathes.
+   Only the orb is redrawn (~15 fps); the minute tick redraws everything else. */
+let breathTimer = 0;
+const breathing = () => !reduceMotion.matches && document.visibilityState === "visible" && mode === "live" && !play && orbMix.amt > 0.01;
+function breathe() {
+  if (raf || !breathing()) return;
+  const now = performance.now();
+  animTime += Math.min(0.1, (now - lastFrame) / 1000);
+  lastFrame = now;
+  dial.breathe(animTime);
+  breathTimer = setTimeout(breathe, 66);
+}
 
 /* ---------------- drawing ---------------- */
-let lastWords = "";
+let lastWords = "", swapTimer = 0;
 function draw(date, t, liftValues) {
   const sky = skyAt(t, sun);
   scene.paint(sky, t, sun);
@@ -211,10 +225,11 @@ function draw(date, t, liftValues) {
   if (words !== lastWords) {
     const first = !lastWords;
     lastWords = words;
-    if (first || drag || stone || mode === "shape") { setText(titleEl, title); setText(subEl, sub); }
+    clearTimeout(swapTimer);
+    if (first || drag || stone || mode === "shape") { $("top").classList.remove("swap"); setText(titleEl, title); setText(subEl, sub); }
     else {
       $("top").classList.add("swap");
-      setTimeout(() => { setText(titleEl, title); setText(subEl, sub); $("top").classList.remove("swap"); }, 180);
+      swapTimer = setTimeout(() => { setText(titleEl, title); setText(subEl, sub); $("top").classList.remove("swap"); }, 180);
     }
   }
 
@@ -233,7 +248,7 @@ function draw(date, t, liftValues) {
   if (Math.abs(goal - orbMix.amt) > 0.002) request(); else orbMix.amt = goal;
 
   const orb = orbView(t, sky, ctx, view);
-  if (play) setText($("playTime"), fmtTime(t, hour12) + " · " + ctx.title);
+  if (play) setText($("playTime"), fmtNow(t, hour12) + " · " + ctx.title);
 
   dial.render({
     t, rot, m, sky, sun, hour12,
@@ -269,7 +284,7 @@ function orbView(t, sky, ctx, view) {
     material = mixDeep(sky.orb, TYPE_ORB[orbMix.type], orbMix.amt);
     material.ink = orbMix.amt > 0.5 ? TYPE_ORB[orbMix.type].ink : sky.orb.ink;
   }
-  const clk = clockParts(t, hour12, true);
+  const clk = clockParts(t, hour12, true, true);
   const base = { material, blob: orbMix.amt, satellites: 1 - orbMix.amt * 0.6, ink: material.ink, tone: "normal" };
   if (mode === "live" || m < 0.5) {
     return { ...base, label: "", big: clk.h + ":" + clk.m, suffix: clk.suffix, small: play ? "" : ctx.caption };
@@ -303,7 +318,7 @@ function shapeReadout(t, view) {
     if (drag?.moved && drag.kind === "move") return { type: b.type, label, ...at(b.start), small: "until " + fmtTime(endOf(b), hour12) };
     return { type: b.type, label, big: fmtDur(b.len), suffix: "", small: fmtRange(b.start, b.start + b.len, hour12) };
   }
-  const clk = clockParts(t, hour12, true);
+  const clk = clockParts(t, hour12, true, true);
   return { label: "", big: clk.h + ":" + clk.m, suffix: clk.suffix, small: fmtDur(freeHours(view)) + " free", inlineSuffix: true };
 }
 
@@ -318,9 +333,9 @@ function renderReadings(t, view, ctx) {
 }
 
 function daySentence(view, t) {
-  if (!view.length) return "Your day is empty. Now " + fmtTime(t, hour12) + ".";
+  if (!view.length) return "Your day is empty. Now " + fmtNow(t, hour12) + ".";
   const parts = view.map((b) => `${typeOf(b.type).name} ${fmtRange(b.start, b.start + b.len, hour12)}`);
-  return "Your day: " + parts.join("; ") + ". Now " + fmtTime(t, hour12) + ".";
+  return "Your day: " + parts.join("; ") + ". Now " + fmtNow(t, hour12) + ".";
 }
 
 /* ---------------- modes ---------------- */
@@ -337,21 +352,25 @@ function enterShape() {
   mode = "shape";
   hintIndex = prefs.shapedOnce ? hintIndex + 1 : 0;
   if (!prefs.shapedOnce) { prefs.shapedOnce = true; persistPrefs(); $("shapeBtn").classList.remove("invite"); }
+  const fromPanel = $("livePanel").contains(document.activeElement);
   setPanels();
   setHint();
+  if (fromPanel) $("doneBtn").focus({ preventScroll: true }); // the button that was focused just went inert
   announce("Shaping your day. Tap a stone to add it, or use the arrow keys on a block.");
   haptic(6);
   request();
 }
 function exitShape() {
   if (mode === "live") return;
+  const hadFocus = [$("doneBtn"), dialEl, $("shapePanel")].some((n) => n.contains(document.activeElement));
   mode = "live";
   selectedId = null;
   setPanels();
+  if (hadFocus) $("shapeBtn").focus({ preventScroll: true });
   request();
 }
 $("shapeBtn").addEventListener("click", enterShape);
-$("doneBtn").addEventListener("click", () => { exitShape(); $("shapeBtn").focus({ preventScroll: true }); });
+$("doneBtn").addEventListener("click", exitShape);
 
 /* One quiet hint at a time; each visit to shaping teaches the next gesture. */
 const HINTS = [
@@ -448,6 +467,7 @@ function endDrag(e, cancelled) {
   }
   setHint();
   if (!d.moved) {
+    if (cancelled) { request(); return; }
     // a tap: select (or let go of) a block
     if (d.id) { selectedId = selectedId === d.id ? null : d.id; kick(d.id, 3); haptic(5); announceBlock(d.id); }
     else selectedId = null;
@@ -527,8 +547,8 @@ function endStone(e, cancelled) {
   s.node.classList.remove("lifting");
   ghost.classList.remove("on", "over");
   for (const [, sp] of lifts) sp.target = 0;
-  if (cancelled) { request(); return; }
-  if (!s.moved) { quickAdd(s.type); return; }
+  if (cancelled || !s.moved) { request(); return; } // a plain tap arrives as a click
+  suppressClick = performance.now() + 500;
   if (s.result) {
     commit(s.result, "Added " + typeOf(s.type).name.toLowerCase());
     selectedId = s.id;
@@ -542,9 +562,11 @@ function endStone(e, cancelled) {
 tray.addEventListener("pointerup", (e) => endStone(e, false));
 tray.addEventListener("pointercancel", (e) => endStone(e, true));
 tray.addEventListener("lostpointercapture", (e) => endStone(e, false));
-tray.addEventListener("keydown", (e) => {
+let suppressClick = 0;
+tray.addEventListener("click", (e) => {
   const node = e.target.closest(".stone");
-  if (node && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); quickAdd(node.dataset.type); }
+  if (!node || performance.now() < suppressClick || play) return;
+  quickAdd(node.dataset.type);
 });
 
 function quickAdd(type) {
@@ -581,17 +603,35 @@ dial.onBlockKey((e, id) => {
     requestAnimationFrame(() => dial.focusBlock(id));
   } else if (e.key === "Delete" || e.key === "Backspace") {
     e.preventDefault();
+    const i = blocks.findIndex((x) => x.id === id);
     commit(removeBlock(blocks, id), "Removed " + name);
     announce(typeOf(b.type).name + " removed.");
+    const next = blocks.length ? blocks[i % blocks.length] : null;
+    requestAnimationFrame(() => { if (next) { selectedId = next.id; dial.focusBlock(next.id); } else tray.querySelector(".stone").focus(); request(); });
   } else if (e.key === "Enter" || e.key === " ") {
     e.preventDefault();
     announceBlock(id);
   }
 });
+function letGo() {
+  if (drag && drag.kind !== "tap") { const id = drag.pointerId; drag = null; try { dialEl.releasePointerCapture(id); } catch { /* gone */ } }
+  if (stone) {
+    const s = stone; stone = null;
+    suppressClick = performance.now() + 1500; // releasing over the same stone must not add it after all
+    s.node.classList.remove("lifting");
+    ghost.classList.remove("on", "over");
+    try { s.node.releasePointerCapture(s.pointerId); } catch { /* gone */ }
+  }
+  for (const [, sp] of lifts) sp.target = 0;
+  setHint();
+  request();
+}
+const handBusy = () => (drag && drag.kind !== "tap") || stone;
 addEventListener("keydown", (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); return; }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); if (!handBusy()) undo(); return; }
   if (e.key === "Escape" && !$("menu").open) {
-    if (play) stopPlay();
+    if (handBusy()) letGo();
+    else if (play) stopPlay();
     else if (selectedId && mode === "shape") { selectedId = null; request(); }
     else if (mode === "shape") exitShape();
   }
@@ -600,7 +640,7 @@ addEventListener("keydown", (e) => {
 /* ---------------- play the day ---------------- */
 function startPlay() {
   exitShape();
-  play = { from: hourOf(new Date()), day: clockDate().getTime(), t0: performance.now(), dur: reduceMotion.matches ? 12000 : 24000 };
+  play = { from: hourOf(clockDate()), day: clockDate().getTime(), t0: performance.now(), dur: reduceMotion.matches ? 12000 : 24000 };
   document.documentElement.classList.add("playing");
   setPanels();
   $("stopPlay").focus({ preventScroll: true });
@@ -691,7 +731,12 @@ function tick() {
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { lastFrame = performance.now(); request(); } });
 addEventListener("resize", request);
 reduceMotion.addEventListener?.("change", request);
-addEventListener("storage", (e) => { if (e.key && e.key.startsWith("dayshaper.") && !drag) { blocks = loadBlocks(); request(); } });
+addEventListener("storage", (e) => {
+  if (e.key !== "dayshaper.blocks.v3" || handBusy()) return;
+  blocks = loadBlocks();
+  if (selectedId && !blocks.some((b) => b.id === selectedId)) selectedId = null;
+  request();
+});
 
 setPanels();
 setHint();
@@ -701,6 +746,7 @@ else if (!PREVIEW && navigator.permissions?.query) {
   navigator.permissions.query({ name: "geolocation" }).then((s) => { if (s.state === "granted") locate(false); }).catch(() => {});
 }
 persist(); // heal whatever was loaded
+if (!PREVIEW && !storageWorks()) setTimeout(() => toast("This browser won't keep your day after you leave", false), 1200);
 tick();
 requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove("instant")));
 

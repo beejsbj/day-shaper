@@ -15,9 +15,10 @@ export function detectHour12() {
 
 export const hourOf = (d) => d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
 
-/** {h, m, suffix} for a clock face. `padHour` zero-pads 12h hours (orb style: 07:42). */
-export function clockParts(t, hour12, padHour = false) {
-  const mins = Math.round(mod24(t) * 60) % 1440;
+/** {h, m, suffix} for a clock face. `padHour` zero-pads 12h hours (orb style: 07:42).
+    `live` floors instead of rounding: a clock reads 9:41 until 9:42 has actually begun. */
+export function clockParts(t, hour12, padHour = false, live = false) {
+  const mins = (live ? Math.floor(mod24(t) * 60 + 1e-7) : Math.round(mod24(t) * 60)) % 1440;
   const h = Math.floor(mins / 60), m = mins % 60;
   if (!hour12) return { h: pad(h), m: pad(m), suffix: "" };
   const h12 = h % 12 || 12;
@@ -27,6 +28,12 @@ export function clockParts(t, hour12, padHour = false) {
 /** "9:00 AM" or "09:00" */
 export function fmtTime(t, hour12) {
   const p = clockParts(t, hour12);
+  return p.h + ":" + p.m + (p.suffix ? " " + p.suffix : "");
+}
+
+/** The current time, as a clock shows it (floored). */
+export function fmtNow(t, hour12) {
+  const p = clockParts(t, hour12, false, true);
   return p.h + ":" + p.m + (p.suffix ? " " + p.suffix : "");
 }
 

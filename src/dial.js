@@ -123,7 +123,7 @@ export function createDial(svg) {
   function blockEl(b) {
     let e = blockEls.get(b.id);
     if (!e) {
-      const g = el("g", { class: "blk", "data-id": b.id, role: "button" });
+      const g = el("g", { class: "blk", "data-id": b.id });
       const body = el("path", null, g);
       const hi = el("path", { class: "blk-hi" }, g);
       const ic = el("use", { width: 17, height: 17, class: "blk-icon" }, g);
@@ -212,12 +212,12 @@ export function createDial(svg) {
       e.name.textContent = showName ? ty.name.toUpperCase() : "";
       set(e.dot, { cx: f(lx), cy: f(ly), opacity: !showIcon ? f(me * 0.8) : 0 });
 
+      // a slider whose value is the start time: screen readers pass the arrow keys straight through
       if (vm.interactive) {
-        e.g.setAttribute("tabindex", "0");
-        e.g.setAttribute("aria-label", vm.labelFor(b));
+        set(e.g, { tabindex: "0", role: "slider", "aria-label": ty.name, "aria-valuemin": "0", "aria-valuemax": "1439",
+          "aria-valuenow": String(Math.round(b.start * 60) % 1440), "aria-valuetext": vm.labelFor(b) });
       } else {
-        e.g.removeAttribute("tabindex");
-        e.g.removeAttribute("aria-label");
+        for (const a of ["tabindex", "role", "aria-label", "aria-valuemin", "aria-valuemax", "aria-valuenow", "aria-valuetext"]) e.g.removeAttribute(a);
       }
     }
     for (const [id, e] of blockEls) if (!seen.has(id)) { e.g.remove(); blockEls.delete(id); }
@@ -255,6 +255,7 @@ export function createDial(svg) {
     set(glowStops[1], { "stop-color": mat.glow, "stop-opacity": f(mat.glowA * 0.35) });
     set(glowStops[2], { "stop-color": mat.glow, "stop-opacity": 0 });
     set(glow, { r: f(orbR * 1.42) });
+    last = { orbR, blob: o.blob, satOp: (1 - me) * o.satellites, reduced: vm.reduced };
     const d = blob(orbR, o.blob, vm.time);
     set(orbBody, { d });
     set(orbRim, { d, stroke: mat.rim, "stroke-opacity": f(mat.rimA), "stroke-width": 1.2 });
@@ -263,11 +264,7 @@ export function createDial(svg) {
     const warm = night ? [lighten(satA.hi, 0.1), satA.mid, satA.lo] : ["#ffe2c0", "#f7c292", "#e9a06d"];
     warm.forEach((c, i) => set(satStops[i], { "stop-color": c }));
     [lighten(satA.hi, 0.25), satA.mid, satA.lo].forEach((c, i) => set(sat2Stops[i], { "stop-color": c }));
-    const drift = vm.reduced ? 0 : Math.sin(vm.time * 0.13) * 0.05;
-    const [s1x, s1y] = at((252 / 360) * TAU + drift, orbR + 7), [s2x, s2y] = at((132 / 360) * TAU - drift * 0.7, orbR - 3);
-    const satOp = f((1 - me) * o.satellites);
-    set(sat1, { cx: f(s1x), cy: f(s1y), r: 13, opacity: satOp });
-    set(sat2, { cx: f(s2x), cy: f(s2y), r: 23, opacity: satOp });
+    placeSatellites(vm.time);
 
     // orb text
     gText.style.color = o.ink;
@@ -286,6 +283,25 @@ export function createDial(svg) {
     set(tSuffix, { x: C, y: f(C + orbR * 0.33), "font-size": f(orbR * 0.13) });
     set(tSmall, { x: C, y: f(C + orbR * (hasLabel || inline ? 0.38 : o.suffix ? 0.56 : 0.4)), "font-size": f(lerp(12, 10.5, me)) });
     gText.classList.toggle("danger", o.tone === "danger");
+  }
+
+  /* satellites drift a little around the orb */
+  let last = null;
+  function placeSatellites(time) {
+    const drift = last.reduced ? 0 : Math.sin(time * 0.13) * 0.05;
+    const [s1x, s1y] = at((252 / 360) * TAU + drift, last.orbR + 7), [s2x, s2y] = at((132 / 360) * TAU - drift * 0.7, last.orbR - 3);
+    const op = f(last.satOp);
+    set(sat1, { cx: f(s1x), cy: f(s1y), r: 13, opacity: op });
+    set(sat2, { cx: f(s2x), cy: f(s2y), r: 23, opacity: op });
+  }
+
+  /** Idle breath: move only the orb's outline and its companions, nothing else. */
+  function breathe(time) {
+    if (!last) return;
+    const d = blob(last.orbR, last.blob, time);
+    orbBody.setAttribute("d", d);
+    orbRim.setAttribute("d", d);
+    placeSatellites(time);
   }
 
   const fmtShort = (mins) => { const h = Math.floor(mins / 60), mm = mins % 60; return h ? (mm ? `${h}h${mm}` : `${h}h`) : `${mm}m`; };
@@ -309,7 +325,7 @@ export function createDial(svg) {
   }
 
   return {
-    render, locate, screenCenter,
+    render, breathe, locate, screenCenter,
     onBlockFocus(fn) { focusHandler = fn; },
     onBlockKey(fn) { keyHandler = fn; },
     focusBlock(id) { const e = blockEls.get(id); if (e) e.g.focus({ preventScroll: true }); },
