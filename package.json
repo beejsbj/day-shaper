@@ -1,0 +1,15 @@
+{
+  "name": "day-shaper",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Mold a what-if day on a round dial of clay, under a sky that follows the real sun.",
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes serve -l 8791 .",
+    "test": "node --test test/*.test.js",
+    "test:e2e": "node test/e2e/smoke.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
