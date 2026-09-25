@@ -62,6 +62,7 @@ function refreshSun(date) {
   sun = PREVIEW ? { sunrise: 6.1, sunset: 18.35, noon: 12.2, polar: null } : sunForDate(date, loc);
 }
 refreshSun(clockDate());
+if (prefs.nowOnTop) rot = -hourOf(clockDate()); // open already turned; only a toggle animates
 
 /* ---------------- DOM ---------------- */
 installSprite();
@@ -334,6 +335,7 @@ function setPanels() {
 function enterShape() {
   if (mode === "shape" || play) return;
   mode = "shape";
+  hintIndex = prefs.shapedOnce ? hintIndex + 1 : 0;
   if (!prefs.shapedOnce) { prefs.shapedOnce = true; persistPrefs(); $("shapeBtn").classList.remove("invite"); }
   setPanels();
   setHint();
@@ -351,8 +353,16 @@ function exitShape() {
 $("shapeBtn").addEventListener("click", enterShape);
 $("doneBtn").addEventListener("click", () => { exitShape(); $("shapeBtn").focus({ preventScroll: true }); });
 
+/* One quiet hint at a time; each visit to shaping teaches the next gesture. */
+const HINTS = [
+  "Tap a stone to add it · or drag it onto the ring",
+  "Drag a block into the orb to let it go",
+  "Turn the orb to shift the whole day",
+  "Pull a block's end to stretch it",
+];
+let hintIndex = 0;
 function setHint(text) {
-  setText($("trayHint"), text || (blocks.length ? "Tap a stone to add it · or drag it onto the ring" : "Your day is open. Tap a stone to begin."));
+  setText($("trayHint"), text || (blocks.length ? HINTS[hintIndex % HINTS.length] : "Your day is open. Tap a stone to begin."));
 }
 
 /* ---------------- the hand on the dial ---------------- */
