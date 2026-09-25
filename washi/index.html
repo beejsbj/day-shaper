@@ -524,7 +524,12 @@
      Short-lived, all driven by the same rAF tick as the springs. Reduced motion skips them. */
   const RM=matchMedia("(prefers-reduced-motion: reduce)");
   const TEAR_MS=300;
-  const tears={}, flecks=[];
+  const tears={}, flecks=[], retapes={};
+  const retapeK=(rt,now)=>{ const k=clamp((now-rt.t0)/rt.dur,0,1); return k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; };
+  function retape(id,from){
+    const b=byId(id); if(!b||RM.matches||from===b.type) return;
+    retapes[id]={from,t0:performance.now()+160,dur:clamp(360+b.len*45,420,780)}; kickRaf();
+  }
   function tearAt(id,end){
     const b=byId(id); if(!b||RM.matches) return;
     tears[id]={end,t0:performance.now()};
@@ -552,7 +557,16 @@
       e.setAttribute("opacity",o.toFixed(2)); gFx.appendChild(e);
     }
     for(const id in tears) if(now-tears[id].t0>TEAR_MS) delete tears[id];
-    return flecks.length>0 || Object.keys(tears).length>0;
+    // the new roll riding the wipe front, turning as it lays tape
+    for(const id in retapes){
+      const rt=retapes[id], b=byId(id);
+      if(!b||now>rt.t0+rt.dur+60){ delete retapes[id]; if(b) bump(id,1.4); continue; }
+      const k=retapeK(rt,now); if(now<rt.t0) continue;
+      const pos=b.start+b.len*k, rr=15.5-2.5*k, fade=smooth(0,.12,k)*(1-smooth(.9,1,k));
+      const gr=rollGlyph(ptAt(pos,R),b.type,(pos-b.start)/24*TAU*R/rr,rr); gr.setAttribute("opacity",fade.toFixed(2));
+      gFx.appendChild(gr);
+    }
+    return flecks.length>0 || Object.keys(tears).length>0 || Object.keys(retapes).length>0;
   }
 
   function drawTapes(){
@@ -573,9 +587,18 @@
       if(tr){ const k=clamp((fxNow-tr.t0)/TEAR_MS,0,1), amp=2.6*(1+1.1*Math.sin(k*Math.PI*2.5)*(1-k)*(1-k)),
           j=k<.55?1+Math.floor(k*9):0;
         if(tr.end==="a"){ ampA=amp; jA=j; } else { ampB=amp; jB=j; } }
-      const d=tapePath(b.start,b.start+b.len,rIn,rOut,seed,ampA,ampB,jA,jB);
       const grp=el("g",{filter:sp.lift>.05?"url(#liftShadow)":"url(#tapeShadow)"});
-      grp.appendChild(el("path",{d,fill:"url(#pat_"+b.type+")"},{mixBlendMode:"var(--tape-blend)",opacity:"var(--tape-o)"}));
+      const tapeStyle={mixBlendMode:"var(--tape-blend)",opacity:"var(--tape-o)"};
+      // re-taping: the new roll lays its pattern over the strip from start to end. The two
+      // pieces butt at a clean cut (not overlapped) so multiply inks don't double up.
+      const rt=retapes[b.id], rk=rt?retapeK(rt,fxNow):1;
+      if(rk<1){
+        const cut=b.start+b.len*rk;
+        if(rk>0) grp.appendChild(el("path",{d:tapePath(b.start,cut,rIn,rOut,seed,ampA,0,jA,0),fill:"url(#pat_"+b.type+")"},tapeStyle));
+        grp.appendChild(el("path",{d:tapePath(cut,b.start+b.len,rIn,rOut,seed,0,ampB,0,jB),fill:"url(#pat_"+rt.from+")"},tapeStyle));
+      } else {
+        grp.appendChild(el("path",{d:tapePath(b.start,b.start+b.len,rIn,rOut,seed,ampA,ampB,jA,jB),fill:"url(#pat_"+b.type+")"},tapeStyle));
+      }
       // crinkle sheen: tape catches light in a soft band near its outer edge
       grp.appendChild(el("path",{d:sector(b.start+.04,b.start+b.len-.04,rOut-9,rOut-4),fill:"#fff",opacity:.13+sp.lift*.12}));
       gTape.appendChild(grp);
@@ -584,7 +607,8 @@
       const mid=b.start+b.len/2, thm=((hourToTheta(mid)%TAU)+TAU)%TAU;
       const lower=thm>Math.PI/2 && thm<Math.PI*1.5;
       const rl=(rIn+rOut)/2;
-      if(b.len>=1.75){
+      if(rk<1){ /* the label is re-printed once the new tape is down */ }
+      else if(b.len>=1.75){
         const a0=hourToTheta(b.start+.28), a1=hourToTheta(b.start+b.len-.12);
         const ic=polar(a0,rl);
         gLabels.appendChild(iconEl(b.type,ic.x,ic.y,13,ty.ink));
@@ -1177,7 +1201,7 @@
   function chooseType(type){
     if(!picker) return;
     const b=byId(picker.id);
-    if(b){ b.type=type; lastType=type; bump(b.id,1.8); }
+    if(b){ const from=b.type; b.type=type; lastType=type; if(from!==type) retape(b.id,from); else bump(b.id,1.8); }
     hapticTick(); closePicker(); render(); save();
   }
   function cutStrip(id){
@@ -1230,7 +1254,7 @@
       sp.lift+=(sp.liftTarget-sp.lift)*(sp.lift<sp.liftTarget?.34:.14);
       if(Math.abs(sp.liftTarget-sp.lift)<.003) sp.lift=sp.liftTarget; else active=true;
     }
-    const now=performance.now(), fxLive=Object.keys(tears).length>0||flecks.length>0||gFx.firstChild;
+    const now=performance.now(), fxLive=Object.keys(tears).length>0||flecks.length>0||Object.keys(retapes).length>0||gFx.firstChild;
     if(fxLive&&drawFx(now)) active=true;
     if(active||fxLive){ drawTapes(); if(drag) drawGhosts(); }
     if(active) requestAnimationFrame(tick); else rafOn=false;
