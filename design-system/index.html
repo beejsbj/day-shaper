@@ -2,213 +2,230 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Day Shaper — design system</title>
-<link rel="stylesheet" href="tokens.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day Shaper · Design system</title>
+<meta name="description" content="How Day Shaper looks and why: ten moments of sky, five clays, one orb.">
+<link rel="icon" href="../icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../styles/tokens.css">
 <style>
-  /* Styleguide chrome only — every specimen below draws from tokens.css.
-     Zero JS: day and night are shown side by side, not toggled. */
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font:var(--type-body);font-size:14px;color:var(--ink);
-    background:linear-gradient(180deg,var(--sky-day-a),var(--sky-day-b) 52%,var(--sky-day-c));
-    min-height:100vh;padding:40px 24px 80px;}
-  main{max-width:920px;margin:0 auto;}
-  h1{font:var(--type-title);font-size:32px;}
-  .kicker{font:var(--type-label);letter-spacing:.32em;text-transform:uppercase;opacity:.5;margin-bottom:6px;}
-  .lede{margin-top:8px;opacity:.65;max-width:60ch;}
-  section{margin-top:56px;}
-  h2{font:var(--type-title);font-size:22px;margin-bottom:4px;}
-  .tier{font:var(--type-label);letter-spacing:.2em;text-transform:uppercase;opacity:.45;}
-  .note{font-size:12.5px;opacity:.6;margin:6px 0 18px;max-width:65ch;line-height:1.5;}
-  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;}
-  .anatomy{font-size:11.5px;line-height:1.65;background:rgba(255,255,255,.4);border-radius:14px;
-    padding:12px 16px;margin-top:14px;max-width:70ch;}
-  .anatomy b{font-weight:500;}
-  /* swatches */
-  .sw{width:104px;border-radius:14px;overflow:hidden;box-shadow:var(--shadow-float);}
-  .sw .c{height:56px;}
-  .sw .m{font-size:10px;padding:5px 8px;background:rgba(255,255,255,.55);letter-spacing:.02em;}
-  /* sky panels */
-  .sky{width:150px;height:200px;border-radius:18px;box-shadow:var(--shadow-float);
-    display:flex;align-items:flex-end;padding:10px;font:var(--type-label);
-    letter-spacing:.2em;text-transform:uppercase;}
-  .sky.day{background:linear-gradient(180deg,var(--sky-day-a),var(--sky-day-b) 52%,var(--sky-day-c));color:var(--ink);}
-  .sky.dawn{background:linear-gradient(180deg,var(--sky-dawn-a),var(--sky-dawn-b) 52%,var(--sky-dawn-c));color:var(--ink);}
-  .sky.dusk{background:linear-gradient(180deg,var(--sky-dusk-a),var(--sky-dusk-b) 52%,var(--sky-dusk-c));color:var(--ink-dark-sky);}
-  .sky.night{background:linear-gradient(180deg,var(--sky-night-a),var(--sky-night-b) 52%,var(--sky-night-c));color:var(--ink-dark-sky);}
-  /* type specimens */
-  .t-hero{font:var(--type-hero);letter-spacing:.01em;}
-  .t-title{font:var(--type-title);}
-  .t-label{font:var(--type-label);letter-spacing:.32em;text-transform:uppercase;}
-  .t-micro{font:var(--type-micro);letter-spacing:.14em;}
-  /* primitives */
-  .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-pill);
-    background:var(--surface);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 4px 14px var(--shadow);
-    font:var(--type-label);letter-spacing:.14em;text-transform:uppercase;color:var(--ink);}
-  .pill .knob{width:16px;height:16px;border-radius:50%;
-    background:radial-gradient(circle at 35% 30%,#fff,#cfdcec);box-shadow:0 1px 3px var(--shadow);}
-  .pill--on .knob{background:radial-gradient(circle at 35% 30%,#fff,var(--sun));}
-  .stone{width:58px;height:58px;border-radius:var(--radius-orb);color:#fff;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:grab;
-    box-shadow:inset 0 2px 6px rgba(255,255,255,.55), inset 0 -5px 10px rgba(70,90,130,.22), var(--shadow-float);}
-  .stone .emo{font-size:19px;line-height:1;}
-  .stone .nm{font-size:8.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-top:2px;
-    text-shadow:0 1px 2px rgba(40,60,100,.35);}
-  .stone--lifting{opacity:.3;transform:scale(.88);}
-  .scrim{display:inline-block;text-align:center;background:var(--surface-deep);
-    border-radius:var(--radius-scrim);padding:7px 18px 9px;color:#fff;box-shadow:0 8px 24px rgba(40,60,110,.22);}
-  .scrim .t{font-size:26px;font-weight:300;}
-  .scrim .l{font:var(--type-micro);letter-spacing:.18em;text-transform:uppercase;opacity:.75;}
-  .scrim--danger .t{color:#ffb49c;}
-  /* unique specimens */
-  .orb{width:140px;height:160px;border-radius:50%;
-    background:radial-gradient(circle at 38% 28%,var(--orb-hi),var(--orb-mid) 55%,var(--orb-lo));
-    box-shadow:var(--shadow-orb);}
-  .orb--night{background:radial-gradient(circle at 38% 28%,var(--orb-n-hi),var(--orb-n-mid) 55%,var(--orb-n-lo));}
-  .sun{width:26px;height:26px;border-radius:50%;background:var(--sun);
-    box-shadow:0 0 0 6px rgba(247,201,92,.18);}
-  .moonWrap{width:26px;height:26px;position:relative;}
-  .moon{width:22px;height:22px;border-radius:50%;background:var(--moon);position:absolute;}
-  .moon-bite{width:18px;height:18px;border-radius:50%;background:var(--sky-night-b);position:absolute;left:9px;top:-4px;}
-  /* compound + composition frames */
-  .frame{border-radius:22px;box-shadow:var(--shadow-float);padding:20px;width:280px;}
-  .frame--day{background:linear-gradient(180deg,var(--sky-day-a),var(--sky-day-c));}
-  .frame--night{background:linear-gradient(180deg,var(--sky-night-a),var(--sky-night-c));color:var(--ink-dark-sky);}
-  .band{height:22px;border-radius:11px;margin-top:14px;display:flex;overflow:hidden;box-shadow:var(--shadow-float);}
-  .band i{display:block;height:100%;}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font); font-optical-sizing: auto; color: #34466b; -webkit-font-smoothing: antialiased;
+    background: linear-gradient(180deg, #b3cce8 0, #d6e2ee 420px, #f3ebe1 1100px, #f3ebe1);
+    min-height: 100vh; padding: 56px 24px 96px; line-height: 1.5;
+  }
+  main { max-width: 1080px; margin: 0 auto; }
+  a { color: inherit; }
+  .kicker { font-size: 11px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; opacity: .55; }
+  h1 { font-size: clamp(34px, 5vw, 48px); font-weight: 250; letter-spacing: -.02em; margin-top: 6px; }
+  .lede { font-size: 17px; font-weight: 380; max-width: 62ch; margin-top: 14px; opacity: .85; }
+  section { margin-top: 80px; }
+  h2 { font-size: 26px; font-weight: 320; letter-spacing: -.01em; }
+  .note { font-size: 14.5px; max-width: 68ch; margin: 8px 0 26px; opacity: .78; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; background: rgba(255,255,255,.5); padding: 1px 6px; border-radius: 6px; }
+
+  .principles { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .principle { background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.7); border-radius: 22px; padding: 20px 20px 22px; }
+  .principle b { display: block; font-weight: 450; font-size: 16px; margin-bottom: 6px; }
+  .principle span { font-size: 13.5px; opacity: .8; }
+
+  /* the living mood board */
+  .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .frame { position: relative; aspect-ratio: 390 / 844; border-radius: 26px; overflow: hidden; background: #d6e2ee;
+    box-shadow: 0 24px 50px -28px rgba(40, 60, 110, .45); }
+  .frame iframe { position: absolute; left: 0; top: 0; width: 390px; height: 844px; border: 0; transform-origin: 0 0; pointer-events: none; }
+  .frame figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 14px 10px; font-size: 11.5px; font-weight: 500; color: #fff;
+    letter-spacing: .04em; background: linear-gradient(transparent, rgba(10, 16, 40, .45)); }
+  @media (max-width: 820px) { .board { grid-template-columns: repeat(2, 1fr); } }
+
+  /* moments */
+  .moments { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+  .moment { position: relative; height: 250px; border-radius: 22px; overflow: hidden; box-shadow: 0 18px 36px -24px rgba(40, 60, 110, .5); }
+  .moment svg.land { position: absolute; left: 0; bottom: 0; width: 100%; height: 42%; }
+  .moment .orb { position: absolute; left: 50%; top: 36%; width: 86px; height: 86px; margin: -43px 0 0 -43px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 19px; font-weight: 250; font-variant-numeric: tabular-nums; }
+  .moment .name { position: absolute; left: 16px; top: 13px; font-size: 14px; font-weight: 450; }
+  .moment .anchor { position: absolute; left: 16px; top: 33px; font-size: 11.5px; opacity: .8; }
+  .moment .chips { position: absolute; left: 12px; right: 12px; bottom: 10px; display: flex; gap: 4px; }
+  .moment .chips i { flex: 1; height: 8px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+
+  /* clays */
+  .clays { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+  .clay { background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.7); border-radius: 22px; padding: 18px; display: grid; gap: 12px; justify-items: start; }
+  .clay .row { display: flex; gap: 12px; align-items: center; }
+  .stone { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+    background: radial-gradient(circle at 35% 28%, color-mix(in oklab, var(--c0), #fff 38%), var(--c0) 52%, var(--c1));
+    box-shadow: inset 0 -7px 12px rgba(40,40,80,.1), inset 0 2px 3px rgba(255,255,255,.6), 0 12px 22px -10px rgba(60,80,120,.35); }
+  .blob { width: 54px; height: 54px; border-radius: 46% 54% 50% 50% / 52% 44% 56% 48%; display: grid; place-items: center; font-size: 13px; font-weight: 300; }
+  .i { width: 24px; height: 24px; }
+  .clay b { font-weight: 450; }
+  .clay small { font-size: 12.5px; opacity: .75; }
+  .sw { display: flex; gap: 6px; }
+  .sw i { width: 34px; height: 22px; border-radius: 7px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05); }
+
+  .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+  .icons div { background: rgba(255,255,255,.45); border-radius: 16px; padding: 14px 8px 10px; display: grid; justify-items: center; gap: 8px; font-size: 11.5px; opacity: .9; }
+
+  .type > div { display: flex; align-items: baseline; gap: 24px; border-top: 1px solid rgba(52,70,107,.12); padding: 14px 0; }
+  .type small { width: 150px; flex: none; font-size: 12px; opacity: .65; }
+
+  .prims { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 28px; border-radius: 24px;
+    background: linear-gradient(180deg, #ebdce6, #f4c9ae 60%, #f2a781); }
+  .prims.night { background: linear-gradient(180deg, #0a1230, #1a2656); color: #eef1fb; margin-top: 14px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: 999px; font-size: 14px; font-weight: 450;
+    background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.6); backdrop-filter: blur(14px); }
+  .night .pill { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.14); }
+  .round { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.6); }
+  .night .round { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.14); }
+  .pill .i, .round .i { width: 20px; height: 20px; }
+
+  .laws { columns: 2 320px; column-gap: 32px; font-size: 14.5px; }
+  .laws p { break-inside: avoid; margin-bottom: 14px; }
+  .laws b { font-weight: 500; }
+  footer { margin-top: 80px; font-size: 13px; opacity: .65; }
 </style>
 </head>
 <body>
 <main>
-  <div class="kicker">Day&nbsp;Shaper</div>
+  <div class="kicker">Day Shaper</div>
   <h1>Design system</h1>
-  <p class="lede">A toy for softly molding a what-if day. The sky is the protagonist: every surface
-  reads against a live gradient keyed to real sunrise and sunset. Soft volume, thin light type,
-  frosted glass, pastel clay. Source of truth: <code>tokens.css</code>; the app inlines these values
-  for single-file offline integrity.</p>
+  <p class="lede">A day you can hold. The sky follows the real sun; a single orb holds the time and takes on the
+    material of whatever you are doing; around it, the day is a ring you can press and push like clay. This page is
+    built from the same files the app uses — <code>styles/tokens.css</code>, <code>src/sky.js</code>,
+    <code>src/types.js</code>, <code>src/icons.js</code> — so it cannot drift.</p>
 
   <section>
-    <div class="tier">Tier 1 · Tokens</div>
-    <h2>Sky phases</h2>
-    <p class="note">Four 3-stop gradients (zenith → mid → horizon), crossfaded by the solar clock over
-    <code>--dur-sky</code>. Ink flips to <code>--ink-dark-sky</code> when mid-stop luminance &lt; 0.45.
-    Clouds fade with the light; stars rise as it dims.</p>
-    <div class="row">
-      <div class="sky dawn">dawn</div>
-      <div class="sky day">day</div>
-      <div class="sky dusk">dusk</div>
-      <div class="sky night">night</div>
-    </div>
-    <h2 style="margin-top:32px">Block pastels</h2>
-    <p class="note">Each block type is a two-stop clay pastel: <code>-0</code> body, <code>-1</code> shaded
-    edge. Saturated enough to read on both skies, soft enough to never shout.</p>
-    <div class="row">
-      <div class="sw"><div class="c" style="background:linear-gradient(135deg,var(--block-sleep-0),var(--block-sleep-1))"></div><div class="m">sleep</div></div>
-      <div class="sw"><div class="c" style="background:linear-gradient(135deg,var(--block-work-0),var(--block-work-1))"></div><div class="m">work</div></div>
-      <div class="sw"><div class="c" style="background:linear-gradient(135deg,var(--block-eat-0),var(--block-eat-1))"></div><div class="m">eat</div></div>
-      <div class="sw"><div class="c" style="background:linear-gradient(135deg,var(--block-move-0),var(--block-move-1))"></div><div class="m">move</div></div>
-      <div class="sw"><div class="c" style="background:linear-gradient(135deg,var(--block-rest-0),var(--block-rest-1))"></div><div class="m">rest</div></div>
-      <div class="sw"><div class="c" style="background:var(--sun)"></div><div class="m">--sun</div></div>
-      <div class="sw"><div class="c" style="background:var(--delete-red)"></div><div class="m">--delete-red</div></div>
-    </div>
-    <h2 style="margin-top:32px">Type scale</h2>
-    <p class="note">One family (<code>--font</code>), hierarchy carried by weight and tracking, never bold.
-    Hero is weight 200 — the thinnest thing on screen is the most important.</p>
-    <div class="t-hero">16:04</div>
-    <div class="t-title">Good afternoon</div>
-    <div class="t-micro">13H 45M SHAPED</div>
-    <div class="t-label">DAY SHAPER</div>
-  </section>
-
-  <section>
-    <div class="tier">Tier 2 · Primitives</div>
-    <h2>Matte pill · stone · scrim</h2>
-    <p class="note">Surfaces are soft matte — near-opaque, no blur. Glassmorphism is a forbidden
-    mutation system-wide: depth comes from the sphere highlight and soft shadow, never from translucency.</p>
-    <div class="row">
-      <span class="pill"><span class="knob"></span>NOW ON TOP</span>
-      <span class="pill pill--on"><span class="knob"></span>NOW ON TOP</span>
-      <div class="stone" style="background:radial-gradient(120% 120% at 35% 25%,#b8c4ea,var(--block-sleep-0) 62%,var(--block-sleep-1))"><span class="emo">🌙</span><span class="nm">Sleep</span></div>
-      <div class="stone stone--lifting" style="background:radial-gradient(120% 120% at 35% 25%,#f8d4b4,var(--block-work-0) 62%,var(--block-work-1))"><span class="emo">✎</span><span class="nm">Work</span></div>
-      <div class="scrim"><div class="t">09:00–13:00</div><div class="l">WORK · 4H</div></div>
-      <div class="scrim scrim--danger"><div class="t">release to delete</div><div class="l">DRAG BACK TO KEEP</div></div>
-    </div>
-    <div class="anatomy">
-      <b>Anatomy — stone.</b> Canonical: 58px sphere, radial highlight at 35% 25%, emoji + 8.5px caps name.
-      Parts: body / emo / nm. Tokens: block pastel pair, <code>--shadow-float</code>, <code>--radius-orb</code>.
-      States: rest · grabbed (cursor + scale) · lifting (opacity .3, scale .88) · ghost (66px, follows thumb).
-      Variant axis: block type only. Forbidden: borders, hard shadows, any non-spherical radius, text inputs of any kind.
+    <h2>How the aesthetic works</h2>
+    <p class="note">Read from the mood board, then made into rules. The first version read the board as a list of parts
+    (orbs, gradients, clouds) and put them all on one screen. The board is really about restraint.</p>
+    <div class="principles">
+      <div class="principle"><b>One screen, one moment</b><span>The whole screen is a single atmosphere for this minute — never a map of day and night side by side.</span></div>
+      <div class="principle"><b>The orb is the hero</b><span>A large soft sphere holds the time in the thinnest type on screen. Everything else steps back.</span></div>
+      <div class="principle"><b>The orb becomes what you do</b><span>Porcelain when you're free, a glowing sun at golden hour, night glass after dark — and the clay of the block you're in, gently breathing.</span></div>
+      <div class="principle"><b>Plain, specific words</b><span>"Focus · Until 12:30 PM." "Time to wind down." "Dawn is 2h 15m away." The day you shaped speaks back to you.</span></div>
+      <div class="principle"><b>Light, not grey</b><span>Skies blend in OKLab, so dusk passes through violet and rose instead of mud. Ink is chosen by contrast, never blended.</span></div>
+      <div class="principle"><b>Clay you can push</b><span>Blocks are soft, rounded, and yield to each other. The day moves as little as possible to make room.</span></div>
+      <div class="principle"><b>Thin line, no emoji</b><span>Icons are drawn for the app at 1.5 px on a 24 grid. Emoji render differently everywhere and shout over pastels.</span></div>
+      <div class="principle"><b>Springs for the hand, slow light for the sky</b><span>Touch answers in ~200 ms with a little overshoot; the sky crossfades over seconds and is never still.</span></div>
     </div>
   </section>
 
   <section>
-    <div class="tier">Tier 3 · Unique specimens</div>
-    <h2>The orb · sun · moon</h2>
-    <p class="note">Singular artifacts — never parameterized, never reused as containers. The orb is the
-    dial's heart (porcelain by day, indigo by night); sun and moon ride the ring at their true hours.</p>
-    <div class="row">
-      <div class="orb"></div>
-      <div class="orb orb--night"></div>
-      <div class="sun"></div>
-      <div class="moonWrap"><div class="moon"></div><div class="moon-bite"></div></div>
+    <h2>A day in eight moments</h2>
+    <p class="note">The mood board, live: each frame is the real app, frozen at a time with <code>?preview&amp;at=HH:MM</code>.
+    The sun is fixed (sunrise 6:06, sunset 6:21) so the frames are repeatable.</p>
+    <div class="board" id="board"></div>
+  </section>
+
+  <section>
+    <h2>Ten moments of sky</h2>
+    <p class="note">Each moment is a whole atmosphere — gradient, ridges, stars, clouds, ink, and the orb's material —
+    anchored to the sun rather than the clock. Offsets shrink on very short days or nights so the order never tangles.</p>
+    <div class="moments" id="moments"></div>
+  </section>
+
+  <section>
+    <h2>Five clays</h2>
+    <p class="note">A lit face and a shaded face for the ring, and a matching material the orb takes on while you're
+    inside the block. Light orbs carry deep ink; deep orbs carry pale ink — at least 3:1 either way (tested).</p>
+    <div class="clays" id="clays"></div>
+  </section>
+
+  <section>
+    <h2>Line icons</h2>
+    <p class="note">One sprite, <code>&lt;use href="#i-name"&gt;</code> everywhere, colour from <code>currentColor</code>.</p>
+    <div class="icons" id="icons"></div>
+  </section>
+
+  <section>
+    <h2>Type</h2>
+    <p class="note">Inter, variable, with optical sizing. Hierarchy comes from weight and space; the thinnest text on
+    screen is the most important.</p>
+    <div class="type">
+      <div><small>Clock · 200</small><span style="font-size:64px;font-weight:200;letter-spacing:-.015em;font-variant-numeric:tabular-nums">07:42</span></div>
+      <div><small>Title · 360 / 24</small><span style="font-size:24px;font-weight:360">Golden hour</span></div>
+      <div><small>Subtitle · 400 / 14</small><span style="font-size:14px;opacity:.8">The light is soft and warm.</span></div>
+      <div><small>Reading · 450 / 14</small><span style="font-size:14px;font-weight:450;font-variant-numeric:tabular-nums">6:21 PM</span></div>
+      <div><small>Label · 600 / 10, tracked</small><span style="font-size:10px;font-weight:600;letter-spacing:.2em">WORK</span></div>
     </div>
   </section>
 
   <section>
-    <div class="tier">Tier 4 · Compounds</div>
-    <h2>Header · tray</h2>
-    <div class="row">
-      <div class="frame frame--day">
-        <div class="t-label" style="opacity:.5">DAY&nbsp;SHAPER</div>
-        <div class="t-title" style="margin-top:4px">Good morning</div>
-        <div style="font:var(--type-body);opacity:.6;margin-top:4px">Friday, July 17 · 13h 52m of light</div>
-      </div>
-      <div class="frame frame--night" style="display:flex;gap:9px;align-items:center;justify-content:center">
-        <div class="stone" style="background:radial-gradient(120% 120% at 35% 25%,#b8c4ea,var(--block-sleep-0) 62%,var(--block-sleep-1))"><span class="emo">🌙</span><span class="nm">Sleep</span></div>
-        <div class="stone" style="background:radial-gradient(120% 120% at 35% 25%,#f8e2ac,var(--block-eat-0) 62%,var(--block-eat-1))"><span class="emo">🍯</span><span class="nm">Eat</span></div>
-        <div class="stone" style="background:radial-gradient(120% 120% at 35% 25%,#c2e4d0,var(--block-move-0) 62%,var(--block-move-1))"><span class="emo">⚡</span><span class="nm">Move</span></div>
-      </div>
-    </div>
+    <h2>Primitives</h2>
+    <p class="note">Soft glass pills and circles. Their tone follows the words they carry: dark words ride pale glass,
+    pale words ride deep glass.</p>
+    <div class="prims" id="prims"></div>
+    <div class="prims night" id="primsNight"></div>
   </section>
 
   <section>
-    <div class="tier">Tier 5 · Compositions</div>
-    <h2>A shaped day, both skies</h2>
-    <p class="note">The ring flattened to a band: sleep, free, work, eat, free, move, rest. In the app this
-    wraps the oval dial; free time is the track itself showing through — absence of clay, not a component.</p>
-    <div class="frame frame--day" style="width:100%;max-width:560px">
-      <div class="t-micro">DAY · TRACK SHOWS DAYLIGHT SIDE</div>
-      <div class="band" style="background:var(--ring-day)">
-        <i style="width:27%;background:linear-gradient(180deg,var(--block-sleep-0),var(--block-sleep-1))"></i>
-        <i style="width:10%"></i>
-        <i style="width:25%;background:linear-gradient(180deg,var(--block-work-0),var(--block-work-1))"></i>
-        <i style="width:5%;background:linear-gradient(180deg,var(--block-eat-0),var(--block-eat-1))"></i>
-        <i style="width:14%"></i>
-        <i style="width:6%;background:linear-gradient(180deg,var(--block-move-0),var(--block-move-1))"></i>
-        <i style="width:8%;background:linear-gradient(180deg,var(--block-rest-0),var(--block-rest-1))"></i>
-      </div>
-    </div>
-    <div class="frame frame--night" style="width:100%;max-width:560px;margin-top:14px">
-      <div class="t-micro">NIGHT · TRACK SHOWS NIGHT SIDE</div>
-      <div class="band" style="background:var(--ring-night)">
-        <i style="width:27%;background:linear-gradient(180deg,var(--block-sleep-0),var(--block-sleep-1))"></i>
-        <i style="width:10%"></i>
-        <i style="width:25%;background:linear-gradient(180deg,var(--block-work-0),var(--block-work-1))"></i>
-        <i style="width:5%;background:linear-gradient(180deg,var(--block-eat-0),var(--block-eat-1))"></i>
-        <i style="width:14%"></i>
-        <i style="width:6%;background:linear-gradient(180deg,var(--block-move-0),var(--block-move-1))"></i>
-        <i style="width:8%;background:linear-gradient(180deg,var(--block-rest-0),var(--block-rest-1))"></i>
-      </div>
-    </div>
-    <div class="anatomy">
-      <b>System laws.</b> No forms, fields, or inputs — every interaction is touch on clay.
-      No glassmorphism — surfaces are soft matte, never blurred translucency.
-      Nothing casts a hard shadow. Weight, not boldness, carries hierarchy. The sky is never static.
-      Free time is never drawn — it is revealed. Motion: springs for touch (<code>--ease-springy</code>,
-      <code>--dur-touch</code>), slow linear fades for the sky (<code>--dur-sky</code>).
+    <h2>Laws</h2>
+    <div class="laws">
+      <p><b>No forms.</b> Every edit is touch on clay (or arrows on a focused block). There is nothing to type.</p>
+      <p><b>The day is a ring.</b> Blocks may cross midnight; sleep from 11:30 PM to 7:00 AM is one block.</p>
+      <p><b>Blocks never pass through each other.</b> They push, and spring back when the hand retreats.</p>
+      <p><b>Free time is never drawn.</b> It is the dotted track showing through.</p>
+      <p><b>Everything can be undone.</b> Every change offers Undo; the history holds sixty steps.</p>
+      <p><b>The sky is never static</b> and never a pie chart. It is the one moment you are in.</p>
+      <p><b>Text reads on its sky.</b> 3:1 at least, for every moment and every minute between them (tested).</p>
+      <p><b>Nothing shouts.</b> No hard shadows, no borders darker than the glass, no bold weights above 650.</p>
     </div>
   </section>
+
+  <footer><a href="../">← Back to the app</a></footer>
 </main>
+
+<script type="module">
+  import { MOMENTS } from "../src/sky.js";
+  import { TYPES } from "../src/types.js";
+  import { installSprite, icon, ICON_NAMES } from "../src/icons.js";
+  installSprite();
+
+  const board = [
+    ["08:40", "", "Good morning · porcelain"],
+    ["10:00", "", "Focus · inside work"],
+    ["13:40", "&shape=1", "Shaping · the clay ring"],
+    ["17:15", "", "Golden hour"],
+    ["18:45", "", "Dusk"],
+    ["22:30", "", "Time to wind down"],
+    ["23:55", "", "Good night · sleep mode"],
+    ["04:45", "&day=s86.28w36.14e51.3m70.4", "Almost there · before dawn"],
+  ];
+  const b = document.getElementById("board");
+  b.innerHTML = board.map(([t, q, cap]) =>
+    `<figure class="frame"><iframe loading="lazy" tabindex="-1" title="${cap}" src="../?preview&at=${t}${q}"></iframe><figcaption>${t.replace(/^0/, "")} · ${cap}</figcaption></figure>`).join("");
+  const fit = () => document.querySelectorAll(".frame").forEach((f) => { f.querySelector("iframe").style.transform = `scale(${f.clientWidth / 390})`; });
+  addEventListener("resize", fit); fit();
+
+  const anchors = { midnight: "solar midnight", predawn: "sunrise − 1h 24m", dawn: "sunrise − 15m", sunrise: "sunrise + 36m", morning: "sunrise + 2h 24m",
+    noon: "solar noon", afternoon: "sunset − 2h 36m", golden: "sunset − 54m", dusk: "sunset + 9m", bluehour: "sunset + 1h" };
+  const hills = (base, amp, seed) => { let d = `M0 100`; for (let i = 0; i <= 24; i++) { const u = i / 24; d += `L${u * 200} ${(base - amp * (0.6 * Math.sin(u * 5 + seed) + 0.4 * Math.sin(u * 11 + seed * 2))).toFixed(1)}`; } return d + "L200 100Z"; };
+  document.getElementById("moments").innerHTML = Object.entries(MOMENTS).map(([k, m]) => `
+    <div class="moment" style="background:linear-gradient(180deg, ${m.top}, ${m.mid} 55%, ${m.bot});color:${m.ink}">
+      <svg class="land" viewBox="0 0 200 100" preserveAspectRatio="none">
+        <path d="${hills(42, 14, 1.7)}" fill="${m.ridge[0]}"/><path d="${hills(64, 12, 4.2)}" fill="${m.ridge[1]}"/><path d="${hills(84, 8, 8.9)}" fill="${m.ridge[2]}"/></svg>
+      <div class="orb" style="background:radial-gradient(circle at 38% 30%, ${m.orb.hi}, ${m.orb.mid} 55%, ${m.orb.lo});color:${m.orb.ink};box-shadow:0 0 30px ${m.orb.glow}${Math.round(m.orb.glowA * 255).toString(16).padStart(2, "0")}, 0 14px 24px -12px rgba(20,30,60,.4)">Aa</div>
+      <div class="name">${k[0].toUpperCase() + k.slice(1).replace("hour", " hour")}</div>
+      <div class="anchor">${anchors[k]}</div>
+      <div class="chips">${[m.top, m.mid, m.bot, ...m.ridge].map((c) => `<i style="background:${c}" title="${c}"></i>`).join("")}</div>
+    </div>`).join("");
+
+  document.getElementById("clays").innerHTML = TYPES.map((t) => `
+    <div class="clay">
+      <div class="row"><div class="stone" style="--c0:${t.c0};--c1:${t.c1}">${icon(t.icon)}</div>
+        <div class="blob" style="background:radial-gradient(circle at 38% 30%, ${t.orb.hi}, ${t.orb.mid} 55%, ${t.orb.lo});color:${t.orb.ink}">9:41</div></div>
+      <div><b>${t.name}</b> · <small>“${t.mood}” · ${t.len >= 1 ? t.len + "h" : t.len * 60 + "m"} by default</small></div>
+      <div class="sw"><i style="background:${t.c0}" title="${t.c0}"></i><i style="background:${t.c1}" title="${t.c1}"></i><i style="background:${t.orb.mid}" title="${t.orb.mid}"></i><i style="background:${t.orb.ink}" title="${t.orb.ink}"></i></div>
+    </div>`).join("");
+
+  document.getElementById("icons").innerHTML = ICON_NAMES.map((n) => `<div>${icon(n)}<span>${n}</span></div>`).join("");
+
+  const prims = `<span class="pill">${icon("up")}Shape your day</span><span class="pill">${icon("check")}Done</span>
+    <span class="round">${icon("more")}</span><span class="pill">${icon("bed")}Sleep mode on</span><span class="pill">Moved work · <b style="font-weight:600;margin-left:6px">Undo</b></span>
+    <span class="round" style="width:56px;height:56px">${icon("pause")}</span>
+    ${TYPES.map((t) => `<span class="stone" style="--c0:${t.c0};--c1:${t.c1}">${icon(t.icon)}</span>`).join("")}`;
+  document.getElementById("prims").innerHTML = prims.replaceAll('class="pill"', 'class="pill" style="color:#553a44"').replaceAll('class="round"', 'class="round" style="color:#553a44"');
+  document.getElementById("primsNight").innerHTML = prims;
+</script>
 </body>
 </html>

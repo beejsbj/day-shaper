@@ -89,11 +89,12 @@ export function createScene(root) {
     // the low sun: rises on the left (where sunrise sits on the dial), sets on the right
     const h = sunHeight(t, sun);
     const nearRise = mod24(t - sun.sunrise) < mod24(sun.sunset - sun.sunrise) / 2;
-    if (!sun.polar && h > -0.12 && h < 0.4) {
-      const x = nearRise ? 24 - h * 20 : 76 + h * 20;
-      const y = 74 - h * 46;
+    // only when it is genuinely low — resting on the ridges, never floating beside the dial
+    if (!sun.polar && h > -0.1 && h < 0.22) {
+      const x = nearRise ? 22 - h * 20 : 78 + h * 20;
+      const y = 77 - h * 40;
       sunEl.style.transform = `translate(${x}vw, ${y}vh)`;
-      sunEl.style.opacity = (Math.min(1, (0.4 - h) / 0.2) * Math.min(1, (h + 0.12) / 0.1)).toFixed(3);
+      sunEl.style.opacity = (Math.min(1, (0.22 - h) / 0.1) * Math.min(1, (h + 0.1) / 0.08)).toFixed(3);
     } else {
       sunEl.style.opacity = "0";
     }

@@ -90,6 +90,20 @@ await check("tap the dial to start shaping, Done to return", async (page) => {
   assert.equal((await state(page)).mode, "live");
 });
 
+await check("a press that wanders off the dial never leaves it stuck", async (page) => {
+  await page.goto(BASE + "?preview&at=10:00");
+  const c = await pt(page, 0, 0);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(20, 20, { steps: 5 });   // off into the header
+  await page.mouse.up();
+  await page.waitForTimeout(200);
+  assert.equal((await state(page)).mode, "live", "a drag-away is not a tap");
+  await page.mouse.click(c.x, c.y);
+  await page.waitForTimeout(600);
+  assert.equal((await state(page)).mode, "shape", "the dial still answers");
+});
+
 await check("move a block: neighbours are pushed, undo restores", async (page) => {
   await page.goto(BASE + "?preview&at=10:00");
   await openShape(page);

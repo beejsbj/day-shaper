@@ -4,7 +4,7 @@
    the warm coral of effort. */
 
 export const TYPES = [
-  { id: "sleep", name: "Sleep", mood: "Rest", icon: "sleep", len: 8,
+  { id: "sleep", name: "Sleep", mood: "Good night", icon: "sleep", len: 8,
     c0: "#a3b0e0", c1: "#6a7bbd", orb: { hi: "#7390cf", mid: "#42599c", lo: "#263777", ink: "#f2f5fd" } },
   { id: "work", name: "Work", mood: "Focus", icon: "work", len: 2,
     c0: "#a3c9ae", c1: "#6c9c7d", orb: { hi: "#9cc4a6", mid: "#62906f", lo: "#3e6a4f", ink: "#f4f8f4" } },

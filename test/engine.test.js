@@ -95,6 +95,21 @@ test("placing in the first half of a block slides it later, second half nudges i
   assert.equal(byId(late, "w").start, 8);
 });
 
+test("placing inside a block moves the day as little as possible", () => {
+  // a packed morning behind the hit block, open evening ahead: yield forward even from the second half
+  // (forward moves w by 3h; backward would move w, m2 and m1 by 1.5h each = 4.5h)
+  const day = [B("m1", 6, 2), B("m2", 8, 2), B("w", 10, 4), B("x", 20, 1)];
+  const out = placeBlock(day, B("n", 0, 0.5, "eat"), 12.5);
+  assert.equal(byId(out, "n").start, 12.5);
+  assert.equal(byId(out, "w").start, 13);
+  assert.equal(byId(out, "m1").start, 6);                  // the morning stays put
+  // open morning behind, packed evening ahead: yield backward even from the first half
+  const day2 = [B("w", 10, 4), B("e1", 14, 3), B("e2", 17, 3)];
+  const out2 = placeBlock(day2, B("n", 0, 1, "eat"), 10.5);
+  assert.equal(byId(out2, "w").start, 6.5);
+  assert.equal(byId(out2, "e1").start, 14);
+});
+
 test("placing shrinks to the free time and refuses a full day", () => {
   const nearlyFull = [B("a", 0, 23.5)];
   const out = placeBlock(nearlyFull, B("n", 0, 2), 5);

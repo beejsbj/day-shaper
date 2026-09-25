@@ -26,8 +26,7 @@ button, a { font: inherit; color: inherit; background: none; border: 0; cursor: 
 /* ---------- the atmosphere ---------- */
 #scene { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
 #scene .sky { position: absolute; inset: 0; background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 52%, var(--sky-bot) 100%); }
-.stars { position: absolute; left: 0; top: 0; width: 1px; height: 1px; border-radius: 50%; opacity: var(--stars); animation: twinkle 6s ease-in-out infinite alternate; }
-@keyframes twinkle { from { filter: brightness(0.85); } to { filter: brightness(1.15); } }
+.stars { position: absolute; left: 0; top: 0; width: 1px; height: 1px; border-radius: 50%; opacity: var(--stars); }
 .moon {
   position: absolute; right: 13%; top: calc(11% + env(safe-area-inset-top)); width: 34px; height: 34px; border-radius: 50%;
   box-shadow: inset 9px -4px 0 0 var(--moonlight); transform: rotate(-18deg); opacity: var(--moon);
@@ -231,6 +230,14 @@ dialog[open] .sheet { animation: rise 0.42s var(--glide); }
 }
 .noscript { position: fixed; inset: auto 0 40px; text-align: center; z-index: 5; }
 
+@media (min-width: 700px) and (min-height: 900px) {
+  #app { max-width: 720px; }
+  #dial { max-width: 620px; }
+  #top { padding: 40px 36px 0 40px; }
+  #title { font-size: 28px; }
+  #subtitle { font-size: 15px; }
+  #bottom { padding-bottom: 32px; }
+}
 @media (max-height: 720px) {
   #top { padding-top: 16px; min-height: 80px; }
   #title { font-size: 23px; }
@@ -243,6 +250,11 @@ dialog[open] .sheet { animation: rise 0.42s var(--glide); }
 @media (max-height: 620px) {
   #readings .i { display: none; }
   :root { --stone: 48px; }
+}
+@media (max-width: 380px) {
+  #top { padding-left: 22px; padding-right: 16px; }
+  #doneBtn { padding: 0 16px; }
+  #subtitle { font-size: 13px; }
 }
 @media (max-width: 350px) {
   #tray { gap: 6px; }

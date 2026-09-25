@@ -23,7 +23,7 @@ const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
 /* ---------------- state ---------------- */
 const prefs = PREVIEW ? { hour12: null, nowOnTop: false, loc: null, shapedOnce: true } : loadPrefs();
-let blocks = PREVIEW ? sampleDay(uid) : loadBlocks();
+let blocks = PREVIEW ? (decodeDay(params.get("day")) || sampleDay(uid)) : loadBlocks();
 const history = createHistory();
 let hour12 = prefs.hour12 ?? detectHour12();
 let loc = prefs.loc || guessLocation();
@@ -67,7 +67,7 @@ refreshSun(clockDate());
 installSprite();
 const scene = createScene($("scene"));
 const dial = createDial($("dial"));
-const titleEl = $("title"), subEl = $("subtitle");
+const titleEl = $("title"), subEl = $("subtitle"), dialEl = $("dial");
 
 $("menuBtn").innerHTML = icon("more");
 $("doneBtn").innerHTML = icon("check") + "<span>Done</span>";
@@ -186,10 +186,10 @@ function frame(now) {
 
   draw(date, t, springs.values);
 
-  // idle life: the orb breathes while you are inside a block; satellites drift
-  const breathing = !reduceMotion.matches && document.visibilityState === "visible" && (orbMix.amt > 0.01 || m < 1);
+  // idle life: while you are inside a block the orb is clay, and clay breathes (slowly, ~12 fps)
+  const breathing = !reduceMotion.matches && document.visibilityState === "visible" && mode === "live" && orbMix.amt > 0.01;
   if (busy) request();
-  else if (breathing) { clearTimeout(idleTimer); idleTimer = setTimeout(request, 60); }
+  else if (breathing) { clearTimeout(idleTimer); idleTimer = setTimeout(request, 80); }
 }
 let idleTimer = 0;
 
@@ -250,7 +250,10 @@ function draw(date, t, liftValues) {
     interactive: mode === "shape",
     labelFor: (b) => `${typeOf(b.type).name}, ${fmtRange(b.start, b.start + b.len, hour12)}, ${fmtDur(b.len)}`,
   });
-  $("dial").setAttribute("aria-label", mode === "shape" ? "Your day, shaping. Use the arrow keys on a block to move it." : daySentence(view, t));
+  const role = mode === "shape" ? "group" : "img";
+  const label = mode === "shape" ? "Your day. Tab to a block, then use the arrow keys to move it." : daySentence(view, t);
+  if (dialEl.getAttribute("role") !== role) dialEl.setAttribute("role", role);
+  if (dialEl.getAttribute("aria-label") !== label) dialEl.setAttribute("aria-label", label);
 }
 
 const TYPE_ORB = Object.fromEntries(TYPES.map((ty) => [ty.id, {
@@ -349,17 +352,20 @@ $("shapeBtn").addEventListener("click", enterShape);
 $("doneBtn").addEventListener("click", () => { exitShape(); $("shapeBtn").focus({ preventScroll: true }); });
 
 function setHint(text) {
-  setText($("trayHint"), text || (blocks.length ? "Tap a stone to add it · drag it onto the ring to place it" : "Your day is open. Tap a stone to begin."));
+  setText($("trayHint"), text || (blocks.length ? "Tap a stone to add it · or drag it onto the ring" : "Your day is open. Tap a stone to begin."));
 }
 
 /* ---------------- the hand on the dial ---------------- */
-const dialEl = $("dial");
 const MOVE_SLOP = 6;
 
 dialEl.addEventListener("pointerdown", (e) => {
   if (e.button > 0 || drag || stone || play) return;
   const p = dial.locate(e.clientX, e.clientY);
-  if (mode === "live") { drag = { kind: "tap", x0: e.clientX, y0: e.clientY, pointerId: e.pointerId }; return; }
+  if (mode === "live") {
+    drag = { kind: "tap", x0: e.clientX, y0: e.clientY, pointerId: e.pointerId };
+    try { dialEl.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
+    return;
+  }
   const g = dial.geometry(1);
   let d = null;
   if (p.r < g.orbR) {
@@ -454,7 +460,7 @@ function endDrag(e, cancelled) {
 }
 dialEl.addEventListener("pointerup", (e) => endDrag(e, false));
 dialEl.addEventListener("pointercancel", (e) => endDrag(e, true));
-dialEl.addEventListener("lostpointercapture", (e) => { if (drag && drag.pointerId === e.pointerId && drag.kind !== "tap") endDrag(e, false); });
+dialEl.addEventListener("lostpointercapture", (e) => { if (drag && drag.pointerId === e.pointerId) endDrag(e, drag.kind === "tap"); });
 
 function announceBlock(id) {
   const b = blocks.find((x) => x.id === id);
@@ -525,6 +531,7 @@ function endStone(e, cancelled) {
 }
 tray.addEventListener("pointerup", (e) => endStone(e, false));
 tray.addEventListener("pointercancel", (e) => endStone(e, true));
+tray.addEventListener("lostpointercapture", (e) => endStone(e, false));
 tray.addEventListener("keydown", (e) => {
   const node = e.target.closest(".stone");
   if (node && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); quickAdd(node.dataset.type); }

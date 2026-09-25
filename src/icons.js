@@ -17,12 +17,9 @@ const P = {
   bed: '<path d="M3 19V6.5"/><path d="M3 15h18v4"/><path d="M21 15v-2.2A3.3 3.3 0 0 0 17.7 9.5H11V15"/><circle cx="6.8" cy="11.6" r="1.7"/>',
   more: '<circle cx="6" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.1" fill="currentColor" stroke="none"/>',
   up: '<path d="M6.5 14.5 12 9l5.5 5.5"/>',
-  down: '<path d="M6.5 9.5 12 15l5.5-5.5"/>',
   check: '<path d="M5.5 12.5 9.8 16.8 18.5 7.8"/>',
-  undo: '<path d="M8.5 13.5 4 9l4.5-4.5"/><path d="M4 9h10.2a5.8 5.8 0 0 1 0 11.6H11"/>',
   play: '<path d="M8.5 5.8v12.4L18.3 12z"/>',
   pause: '<path d="M9 5.5v13M15 5.5v13"/>',
-  close: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
   pin: '<path d="M12 20.8s-6.2-5.9-6.2-11a6.2 6.2 0 0 1 12.4 0c0 5.1-6.2 11-6.2 11z"/><circle cx="12" cy="9.8" r="2.2"/>',
   share: '<path d="M12 14.5V3.8"/><path d="M8.2 7.4 12 3.6l3.8 3.8"/><path d="M5.5 12.5v5.3a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-5.3"/>',
   clock: '<circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3.1 2"/>',
@@ -30,7 +27,6 @@ const P = {
   reset: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.2v4.2h4.2"/>',
   clear: '<path d="M5 7.2h14"/><path d="M9.5 7.2V5.2h5v2"/><path d="M7 7.2l.9 12h8.2l.9-12"/>',
   palette: '<path d="M12 3.6a8.4 8.4 0 1 0 0 16.8c1.2 0 1.8-.9 1.5-1.9-.4-1.3.4-2.4 1.8-2.4h1.6a3.5 3.5 0 0 0 3.5-3.5c0-5-3.8-9-8.4-9z"/><circle cx="8.4" cy="11" r="1.1"/><circle cx="11.2" cy="7.6" r="1.1"/><circle cx="15.4" cy="8.6" r="1.1"/>',
-  hand: '<path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V12M11 11V4.8a1.5 1.5 0 0 1 3 0V11M14 11V6.2a1.5 1.5 0 0 1 3 0v7.3c0 4-2.4 6.8-6 6.8-2.3 0-3.6-1-5-3l-2.3-3.6a1.5 1.5 0 0 1 2.5-1.6L8 13.9"/>',
 };
 
 export const ICON_NAMES = Object.keys(P);

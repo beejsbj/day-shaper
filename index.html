@@ -14,7 +14,8 @@
 <meta name="format-detection" content="telephone=no">
 <meta property="og:title" content="Day Shaper">
 <meta property="og:description" content="Shape a what-if day on a ring of clay, under a sky that follows the real sun.">
-<meta property="og:image" content="icons/og.png">
+<meta property="og:image" content="https://day-shaper-psi.vercel.app/icons/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -57,7 +58,7 @@
       </div>
     </div>
     <div id="shapePanel" class="panel off" inert>
-      <p id="trayHint">Tap a stone to add it · drag it onto the ring to place it</p>
+      <p id="trayHint">Tap a stone to add it · or drag it onto the ring</p>
       <div id="tray" role="toolbar" aria-label="Add to your day"></div>
     </div>
     <div id="playPanel" class="panel off" inert>
@@ -93,7 +94,7 @@
   </form>
 </dialog>
 
-<div id="rotate" aria-hidden="true"><p>Turn your phone upright<br><small>the day is shaped in portrait</small></p></div>
+<div id="rotate" aria-hidden="true"><p>Hold it upright<br><small>the day is shaped in portrait</small></p></div>
 <noscript><p class="noscript">Day Shaper needs JavaScript to shape your day.</p></noscript>
 </body>
 </html>

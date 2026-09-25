@@ -175,6 +175,7 @@ export function createDial(svg) {
         const d = wrapDelta(b.start - o);
         if (Math.abs(d) < 0.01) continue;
         el("path", { d: sector(o, o + b.len, r0 + 1, r1 - 1, 9), class: "ghost" }, gGhost);
+        if (b.len < 0.6) continue; // short blocks keep their outline; their label would crowd a neighbour's
         const [x, y] = at(ang(o + b.len / 2), r1 + 13);
         const lab = el("text", { x: f(x), y: f(y), class: "ghost-label", "text-anchor": "middle", "dominant-baseline": "central" }, gGhost);
         const mins = Math.round(d * 60);
@@ -202,7 +203,6 @@ export function createDial(svg) {
       e.g.setAttribute("opacity", op);
       e.g.classList.toggle("lifted", lift > 0.05);
       e.g.classList.toggle("selected", isSel);
-      e.g.style.setProperty("--lift", f(lift));
 
       // label: icon, and a name on long blocks; fades in with the swell
       const mid = b.start + b.len / 2, [lx, ly] = at(ang(mid), (inn + out) / 2);

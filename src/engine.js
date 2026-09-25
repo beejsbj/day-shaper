@@ -118,20 +118,35 @@ export function removeBlock(blocks, id) {
   return blocks.filter((b) => b.id !== id);
 }
 
-/** Drop a new block at `start`. Landing in the first half of an existing block
-    slides that block later; landing in its second half nudges it earlier.
+/** Total distance the existing blocks travel between two versions of the day. */
+function disturbance(before, after) {
+  let sum = 0;
+  for (const b of before) {
+    const a = after.find((x) => x.id === b.id);
+    if (a) sum += Math.abs(wrapDelta(a.start - b.start));
+  }
+  return sum;
+}
+
+/** Drop a new block at `start`, keeping the drop time exactly. Landing inside an
+    existing block means it has to yield one way or the other: try both — slide
+    it (and whatever it bumps) later, or nudge it earlier — and keep whichever
+    disturbs the rest of the day least. Ties go by which half was hit.
     Returns null when the day has no room. */
 export function placeBlock(blocks, block, start) {
   const len = Math.min(block.len, snapDown(freeHours(blocks)));
   if (len < MIN_LEN - EPS) return null;
   const s = snap(start);
-  let pivot = s;
+  const pinned = { ...block, len };
+  const trailing = settle(pinned, s, len, chainFrom(blocks, block.id, s));
   const hit = blockAt(blocks, s);
-  if (hit >= 0) {
-    const h = blocks[hit];
-    if (mod24(s - h.start) < h.len / 2) pivot = s - mod24(s - h.start); // h leads the chain
-  }
-  return settle({ ...block, len }, s, len, chainFrom(blocks, block.id, pivot));
+  if (hit < 0) return trailing;
+  const h = blocks[hit];
+  if (mod24(s - h.start) < EPS) return trailing; // dropped on its very start: it simply slides along
+  const leading = settle(pinned, s, len, chainFrom(blocks, block.id, s - mod24(s - h.start)));
+  const dl = disturbance(blocks, leading), dt = disturbance(blocks, trailing);
+  if (Math.abs(dl - dt) > EPS) return dl < dt ? leading : trailing;
+  return mod24(s - h.start) < h.len / 2 ? leading : trailing;
 }
 
 /** Free stretches of the ring, in ring order: [{start, len}] with start in [0,24). */
