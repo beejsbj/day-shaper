@@ -204,6 +204,7 @@
       <g id="gNow"></g>
       <g id="gHub"></g>
       <g id="gRoll"></g>
+      <g id="gFx"></g>
     </svg>
     <div id="readout"><div class="dymo main">—</div><div class="dymo sub">—</div></div>
   </div>
@@ -411,10 +412,10 @@
     return pts.map(p=>"L"+f1(p.x)+" "+f1(p.y)).join("");
   }
   /* a strip of tape from hour t0 to t1: two arcs + two torn ends */
-  function tapePath(t0,t1,rIn,rOut,seed,ampA,ampB){
+  function tapePath(t0,t1,rIn,rOut,seed,ampA,ampB,jA=0,jB=0){
     const a=hourToTheta(t0), b=hourToTheta(t1)+(t1<=t0?TAU:0), p0=polar(a,rOut);
-    return "M"+f1(p0.x)+" "+f1(p0.y)+arcCmd(rOut,a,b)+tornPts(b,rOut,rIn,seed,ampB)
-      +arcCmd(rIn,b,a)+tornPts(a,rIn,rOut,seed+99,ampA)+"Z";
+    return "M"+f1(p0.x)+" "+f1(p0.y)+arcCmd(rOut,a,b)+tornPts(b,rOut,rIn,seed+jB,ampB)
+      +arcCmd(rIn,b,a)+tornPts(a,rIn,rOut,seed+99+jA,ampA)+"Z";
   }
   function sector(t0,t1,rIn,rOut){
     const a=hourToTheta(t0), b=hourToTheta(t1), p0=polar(a,rOut), p1=polar(b,rIn);
@@ -459,7 +460,7 @@
   /* ---------------- render ---------------- */
   const g=(id)=>$(id);
   const gTrack=g("gTrack"),gTape=g("gTape"),gSpent=g("gSpent"),gGhost=g("gGhost"),
-        gLabels=g("gLabels"),gBodies=g("gBodies"),gNow=g("gNow"),gHub=g("gHub"),gRoll=g("gRoll");
+        gLabels=g("gLabels"),gBodies=g("gBodies"),gNow=g("gNow"),gHub=g("gHub"),gRoll=g("gRoll"),gFx=g("gFx");
 
   // the die-cut paper disc lying on the printed sheet: place the HTML disc under the dial
   const cardEl=$("card");
@@ -519,8 +520,44 @@
   const bump=(id,amt=1)=>{ const sp=spring(id); sp.v=clamp(sp.v+amt*6,-16,16); kickRaf(); };
   const setLift=(id,t)=>{ spring(id).liftTarget=t; kickRaf(); };
 
+  /* ---------------- paper effects: tears, fibre flecks ----------------
+     Short-lived, all driven by the same rAF tick as the springs. Reduced motion skips them. */
+  const RM=matchMedia("(prefers-reduced-motion: reduce)");
+  const TEAR_MS=300;
+  const tears={}, flecks=[];
+  function tearAt(id,end){
+    const b=byId(id); if(!b||RM.matches) return;
+    tears[id]={end,t0:performance.now()};
+    // fibres and flakes spit off the fresh edge, away from the strip, and fall
+    const t=end==="b"?b.start+b.len:b.start, th=hourToTheta(t), dir=end==="b"?1:-1, col=typeOf(b.type).color;
+    const tx=Math.cos(th)*dir, ty=Math.sin(th)*dir, seed=(Math.random()*1e9)>>>0;
+    for(let i=0;i<9;i++){
+      const r=R_IN+4+rnd(seed,i)*(TAPE_W-8), p=polar(th,r), sp=45+rnd(seed,i+20)*80, rad=(rnd(seed,i+40)-.5)*60;
+      flecks.push({x:p.x,y:p.y, vx:tx*sp+Math.sin(th)*rad, vy:ty*sp-Math.cos(th)*rad-25,
+        rot:rnd(seed,i+60)*360, vr:(rnd(seed,i+80)-.5)*720, len:1.6+rnd(seed,i+90)*2.6,
+        fibre:i%3!==0, col, t0:performance.now(), life:420+rnd(seed,i+100)*300});
+    }
+    kickRaf();
+  }
+  function drawFx(now){
+    clear(gFx);
+    for(let i=flecks.length-1;i>=0;i--){
+      const f=flecks[i], age=(now-f.t0)/1000, k=age*1000/f.life;
+      if(k>=1){ flecks.splice(i,1); continue; }
+      const x=f.x+f.vx*age, y=f.y+f.vy*age+130*age*age, rot=f.rot+f.vr*age, o=(1-k)*(1-k);
+      const e= f.fibre
+        ? el("path",{d:"M"+f1(-f.len)+" 0q"+f1(f.len*.5)+" -1 "+f1(f.len)+" 0t"+f1(f.len)+" 0",fill:"none",stroke:f.col,"stroke-width":.7,"stroke-linecap":"round"})
+        : el("path",{d:"M-1.4 -1L1.6 -.6L.2 1.5Z",fill:f.col});
+      e.setAttribute("transform","translate("+f1(x)+" "+f1(y)+") rotate("+rot.toFixed(0)+")");
+      e.setAttribute("opacity",o.toFixed(2)); gFx.appendChild(e);
+    }
+    for(const id in tears) if(now-tears[id].t0>TEAR_MS) delete tears[id];
+    return flecks.length>0 || Object.keys(tears).length>0;
+  }
+
   function drawTapes(){
     clear(gTape); clear(gLabels);
+    const fxNow=performance.now();
     const order=[...blocks].sort((a,b)=>spring(a.id).lift-spring(b.id).lift);
     const defs=$("defs"); defs.querySelectorAll(".lp").forEach(n=>n.remove());
     for(const b of order){
@@ -529,9 +566,14 @@
       const rIn=R_IN-wob*.5+lift, rOut=R_OUT+wob+lift;
       const drawing = drag && drag.mode==="draw" && drag.newId===b.id;
       // the leading end is still on the roll while drawing: a clean cut, not a tear
-      const ampA = drawing && drag.cur<drag.anchor ? 0 : 2.6;
-      const ampB = drawing && drag.cur>drag.anchor ? 0 : 2.6;
-      const d=tapePath(b.start,b.start+b.len,rIn,rOut,seed,ampA,ampB);
+      let ampA = drawing && drag.cur<drag.anchor ? 0 : 2.6;
+      let ampB = drawing && drag.cur>drag.anchor ? 0 : 2.6, jA=0, jB=0;
+      // a fresh tear: the ragged end snaps through a few shapes, overshoots, then settles
+      const tr=tears[b.id];
+      if(tr){ const k=clamp((fxNow-tr.t0)/TEAR_MS,0,1), amp=2.6*(1+1.1*Math.sin(k*Math.PI*2.5)*(1-k)*(1-k)),
+          j=k<.55?1+Math.floor(k*9):0;
+        if(tr.end==="a"){ ampA=amp; jA=j; } else { ampB=amp; jB=j; } }
+      const d=tapePath(b.start,b.start+b.len,rIn,rOut,seed,ampA,ampB,jA,jB);
       const grp=el("g",{filter:sp.lift>.05?"url(#liftShadow)":"url(#tapeShadow)"});
       grp.appendChild(el("path",{d,fill:"url(#pat_"+b.type+")"},{mixBlendMode:"var(--tape-blend)",opacity:"var(--tape-o)"}));
       // crinkle sheen: tape catches light in a soft band near its outer edge
@@ -642,16 +684,29 @@
   }
 
   // the roll you're pulling from, riding the leading end while drawing
+  /* a roll of tape at p, turned by spin (radians). Built at the origin and rotated as one,
+     so the pattern, the wound layers, the core notch and the glint all visibly turn. */
+  function rollGlyph(p,type,spin,rr){
+    const gr=el("g",{filter:"url(#liftShadow)",transform:"translate("+f1(p.x)+" "+f1(p.y)+")"});
+    const sp=el("g",{transform:"rotate("+(spin*180/Math.PI).toFixed(1)+")"});
+    sp.appendChild(el("circle",{r:f1(rr),fill:"url(#pat_"+type+")"}));
+    sp.appendChild(el("circle",{r:f1(rr-4.5),fill:"none",stroke:"rgba(0,0,0,.14)","stroke-width":.7}));
+    sp.appendChild(el("circle",{r:f1(rr-2.2),fill:"none",stroke:"rgba(0,0,0,.08)","stroke-width":.5,"stroke-dasharray":"9 5 3 6"}));
+    sp.appendChild(el("path",{d:"M"+f1(-rr*.62)+" "+f1(-rr*.6)+"A"+f1(rr*.86)+" "+f1(rr*.86)+" 0 0 1 "+f1(rr*.2)+" "+f1(-rr*.84),
+      fill:"none",stroke:"#fff","stroke-opacity":.5,"stroke-width":1.6,"stroke-linecap":"round"}));
+    sp.appendChild(el("circle",{r:7.5,fill:"var(--core)",stroke:"rgba(0,0,0,.25)","stroke-width":.8}));
+    sp.appendChild(el("circle",{r:4.5},{fill:"var(--card)"}));
+    sp.appendChild(el("path",{d:"M0 -7.5V-4.5M6.5 3.75L3.9 2.25M-6.5 3.75L-3.9 2.25",stroke:"rgba(0,0,0,.3)","stroke-width":.9}));
+    gr.appendChild(sp); return gr;
+  }
+  // the roll you're pulling from, riding the leading end while drawing: it turns as the tape
+  // pays out (rolling along the ring) and slims a little as the strip gets longer
   function drawRoll(){
     clear(gRoll);
     if(!drag||drag.mode!=="draw"||!drag.newId) return;
-    const p=ptAt(drag.cur,R), ty=typeOf(lastType);
-    const gr=el("g",{filter:"url(#liftShadow)"});
-    gr.appendChild(el("circle",{cx:f1(p.x),cy:f1(p.y),r:17,fill:"url(#pat_"+ty.id+")"}));
-    gr.appendChild(el("circle",{cx:f1(p.x),cy:f1(p.y),r:12.5,fill:"none",stroke:"rgba(0,0,0,.14)","stroke-width":.7}));
-    gr.appendChild(el("circle",{cx:f1(p.x),cy:f1(p.y),r:7.5,fill:"var(--core)",stroke:"rgba(0,0,0,.25)","stroke-width":.8}));
-    gr.appendChild(el("circle",{cx:f1(p.x),cy:f1(p.y),r:4.5},{fill:"var(--card)"}));
-    gRoll.appendChild(gr);
+    const pos=clamp(drag.unw,drag.lo,drag.hi), len=Math.abs(drag.cur-drag.anchor), rr=17-Math.min(4,len*.4);
+    const spin=(pos-drag.anchor)/24*TAU*R/rr;
+    gRoll.appendChild(rollGlyph(ptAt(pos,R),lastType,spin,rr));
   }
 
   /* dashed pencil "before" outlines while a gesture is shoving neighbours */
@@ -860,7 +915,7 @@
   }
   const angDist=(a,b)=>{ const d=Math.abs(((a-b)%24+24)%24); return Math.min(d,24-d); };
   const TAP_PX=7, HOLD_MS=380, LIFT_IN=.64, LIFT_OUT=1.32, HUB_DELETE=HUB_R/R*.9;
-  let drag=null, picker=null;
+  let drag=null, picker=null, pendingPick=0;
 
   // collision legibility: the shoved neighbour peels up a little for a beat
   const liftedIds=new Set();
@@ -870,7 +925,7 @@
   function settleAllLifts(){ clearNeighborLift(); for(const id in springs) springs[id].liftTarget=0; kickRaf(); }
 
   dial.addEventListener("pointerdown",(e)=>{
-    if(drag||picker) return;
+    if(drag||picker||pendingPick) return;
     e.preventDefault(); try{dial.setPointerCapture(e.pointerId);}catch(_){}
     const p=ptSVG(e), r=ringDist(p.x,p.y), rawT=ptToHour(p.x,p.y);
     const base={pid:e.pointerId,x0:e.clientX,y0:e.clientY,lastX:e.clientX,lastY:e.clientY,active:false};
@@ -1044,7 +1099,9 @@
     READ.classList.remove("danger"); clear(gGhost); clear(gRoll);
     if(!cancel&&!d.active&&(d.mode==="move"||d.mode==="resize")){ settleAllLifts(); render(); openPicker(d.id,false); return; }
     if(d.mode==="draw"){
-      if(d.newId&&!cancel){ hapticTear(); bump(d.newId,1.6); settleAllLifts(); render(); save(); openPicker(d.newId,true); return; }
+      if(d.newId&&!cancel){ hapticTear(); bump(d.newId,1.6); tearAt(d.newId,d.cur>d.anchor?"b":"a");
+        settleAllLifts(); render(); save();
+        pendingPick=setTimeout(()=>{ pendingPick=0; openPicker(d.newId,true); },RM.matches?0:TEAR_MS*.7); return; }
       if(d.newId) blocks=blocks.filter(x=>x.id!==d.newId);
       else if(!cancel){ showRead("pull, don't tap","drag along the bare ring"); }
     } else if(d.mode==="carry"){
@@ -1173,7 +1230,10 @@
       sp.lift+=(sp.liftTarget-sp.lift)*(sp.lift<sp.liftTarget?.34:.14);
       if(Math.abs(sp.liftTarget-sp.lift)<.003) sp.lift=sp.liftTarget; else active=true;
     }
-    if(active){ drawTapes(); if(drag) drawGhosts(); requestAnimationFrame(tick); } else rafOn=false;
+    const now=performance.now(), fxLive=Object.keys(tears).length>0||flecks.length>0||gFx.firstChild;
+    if(fxLive&&drawFx(now)) active=true;
+    if(active||fxLive){ drawTapes(); if(drag) drawGhosts(); }
+    if(active) requestAnimationFrame(tick); else rafOn=false;
   }
   let lastMin=-1, sunKey="";
   function housekeeping(){
