@@ -25,7 +25,7 @@ Tap **Shape your day**. Five clay stones give you somewhere to start: sleep, foc
 | Remove | Drag a block into the orb |
 | Rename | Select a block, then tap the orb |
 | Shift the whole day | Turn the orb |
-| Finish | Tap Done or the sky outside the ring |
+| Finish | Tap the center with no block selected, Done, or the sky outside the ring |
 | Undo | Use the toast or ⌘/Ctrl-Z |
 
 The ring crosses midnight, so a night's sleep stays one block. The round button beside **Shape your day** switches between noon and now at the top. In the menu, **Play the day** runs through it in 24 seconds; **Share this day** makes a link containing the schedule, including your block names.
@@ -40,7 +40,7 @@ The app works offline once its files have been cached. Fresh weather needs a con
 
 ## Location and privacy
 
-The sun starts with an estimate from your time zone. **Where you are** asks for your location to calculate more accurate sunrise and sunset times and show the weather.
+The sun starts with an estimate from your time zone. Tap **Where are you?** at the top to share your location for local sunrise, sunset, and weather. Conditions stay visible above the dial while you shape or play the day, with temperatures in Celsius. Tap them to update your location; the menu holds the physical geography and coordinates.
 
 - The schedule and preferences are saved on your device. There is no account or server-side schedule storage.
 - Weather comes from [Open-Meteo](https://open-meteo.com/). This request sends coordinates rounded to about a kilometre; weather is refreshed at most every 30 minutes during normal use.

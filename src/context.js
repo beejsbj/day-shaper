@@ -33,7 +33,6 @@ function greeting(t) {
  *   current: {block, left} | null   next: {block, in} | null
  */
 const partOfDay = (t) => (t >= 5 && t < 12 ? "morning" : t >= 12 && t < 17 ? "afternoon" : t >= 17 && t < 21.5 ? "evening" : "night");
-const degrees = (wx) => wx.temp + "°";
 
 /** A block's own name if you gave it one, else its clay's. */
 export const blockName = (b) => b.name || typeOf(b.type).name;
@@ -67,7 +66,7 @@ export function describe({ t, date, blocks, sun, hour12, wx = null }) {
     if (wx && wx.word && wx.wet && phase !== "predawn") {
       // the mood board's "Rainy afternoon": weather outranks the light when it is falling
       title = wx.word + " " + partOfDay(t);
-      subtitle = wx.label + " · " + degrees(wx);
+      subtitle = fmtDate(date);
     } else if (phase === "predawn") {
       title = "Almost there";
       subtitle = "Dawn is " + fmtDur(mod24(sun.sunrise - t)) + " away.";
@@ -83,15 +82,14 @@ export function describe({ t, date, blocks, sun, hour12, wx = null }) {
     } else {
       title = greeting(t);
       subtitle = title === "Good night" ? "Rest well and recharge." : fmtDate(date);
-      if (wx) subtitle += " · " + degrees(wx) + " " + wx.label.toLowerCase();
     }
   }
 
   return { title, subtitle, caption, phase, current, next, sleeping: cur?.type === "sleep" };
 }
 
-/** The four quiet readings under the dial (the mood board's weather row). */
-export function readings({ t, blocks, sun, hour12, next, wx = null }) {
+/** The four quiet readings under the dial. Weather lives in the header. */
+export function readings({ t, blocks, sun, hour12, next }) {
   const at = (h) => fmtTime(h, hour12);
   const out = [];
   out.push(next
@@ -106,9 +104,7 @@ export function readings({ t, blocks, sun, hour12, next, wx = null }) {
       ? { icon: "sunset", label: "Sunset", value: at(sun.sunset) }
       : { icon: "sunrise", label: "Sunrise", value: at(sun.sunrise) });
   }
-  out.push(wx
-    ? { icon: wx.icon, label: wx.label, value: degrees(wx) }
-    : { icon: "daylight", label: "Daylight", value: fmtDur(dayLength(sun)) });
+  out.push({ icon: "daylight", label: "Daylight", value: fmtDur(dayLength(sun)) });
   return out;
 }
 

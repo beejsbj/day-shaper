@@ -29,8 +29,8 @@ const BASE = `http://localhost:${server.address().port}/`;
 
 const browser = await pw.chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const results = [];
-async function check(name, fn) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+async function check(name, fn, viewport = { width: 390, height: 844 }) {
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -180,7 +180,9 @@ await check("first offline location lookup and later travel use the installed ma
   await page.evaluate(() => {
     navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 25, longitude: 0 } });
   });
-  await page.click('[data-act="locate"]');
+  await page.keyboard.press("Escape");
+  await page.click("#weatherBtn");
+  await page.click("#menuBtn");
   await page.waitForFunction(() => document.querySelector("#whereLine").textContent === "Sahara");
   await page.evaluate(() => {
     navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 0, longitude: -140 } });
@@ -199,6 +201,18 @@ await check("tap the dial to start shaping, Done to return", async (page) => {
   await page.click("#doneBtn");
   await page.waitForTimeout(500);
   assert.equal((await state(page)).mode, "live");
+});
+
+await check("the center toggles shaping without changing the day", async (page) => {
+  await page.goto(BASE + "?preview&at=10:00");
+  const before = (await state(page)).blocks;
+  for (const mode of ["shape", "live", "shape", "live"]) {
+    const c = await pt(page, 0, 0);
+    await page.mouse.click(c.x, c.y);
+    await page.waitForTimeout(600);
+    assert.equal((await state(page)).mode, mode);
+    assert.deepEqual((await state(page)).blocks, before);
+  }
 });
 
 await check("a press that wanders off the dial never leaves it stuck", async (page) => {
@@ -510,29 +524,39 @@ await check("an empty day can be shared and opened", async (page) => {
   assert.match(await page.textContent("#toastText"), /didn't hold a whole day/);
 });
 
-await check("rain: the sky greys, the words say so, the reading shows it", async (page) => {
+await check("rain: the sky greys and weather stays above the dial", async (page) => {
   await page.goto(BASE + "?preview&at=15:10&day=0&wx=rain&temp=12");
   await page.waitForTimeout(500);
   assert.equal(await page.textContent("#title"), "Rainy afternoon");
-  assert.equal(await page.textContent("#subtitle"), "Rain · 12°");
+  assert.equal(await page.textContent("#weatherText"), "12°C · Rain");
   const r = await page.$$eval("#readings li", (li) => li.map((x) => x.textContent));
-  assert.ok(r[3].includes("12°"), r.join(" | "));
+  assert.ok(r[3].includes("Daylight"), r.join(" | "));
+  await openShape(page);
+  assert.equal(await page.locator("#weatherBtn").isVisible(), true);
+  assert.equal(await page.textContent("#weatherText"), "12°C · Rain");
+  await page.click("#doneBtn");
+  await page.click("#menuBtn");
+  await page.click('[data-act="play"]');
+  assert.equal(await page.locator("#weatherBtn").isVisible(), true);
   await page.waitForFunction(() => +getComputedStyle(document.documentElement).getPropertyValue("--rain") > 0.3, null, { timeout: 4000 });
 });
 
 await check("real weather is asked for only with a real location, and shows up", async (page) => {
   let asked = 0;
-  await page.route("https://api.open-meteo.com/**", (route) => { asked++; route.fulfill({ contentType: "application/json", body: JSON.stringify({ elevation: 212, current: { temperature_2m: 18.4, weather_code: 2, cloud_cover: 40 } }) }); });
+  let units;
+  await page.route("https://api.open-meteo.com/**", (route) => { asked++; units = new URL(route.request().url()).searchParams.get("temperature_unit"); route.fulfill({ contentType: "application/json", body: JSON.stringify({ elevation: 212, current: { temperature_2m: 18.4, weather_code: 2, cloud_cover: 40 } }) }); });
   await page.goto(BASE + "?at=09:00");
   await page.waitForTimeout(400);
   assert.equal(asked, 0, "no location, no request");
+  assert.equal(await page.textContent("#weatherText"), "Where are you?");
   await page.evaluate(() => localStorage.setItem("dayshaper.prefs.v1", JSON.stringify({ loc: { lat: 46.95, lon: 7.45 }, shapedOnce: true })));
   await page.goto(BASE + "?at=09:00");
   // the data lands, then the next frame paints it: wait for the paint
-  await page.waitForFunction(() => document.querySelector("#readings li:nth-child(4)")?.textContent.includes("18°"), null, { timeout: 4000 });
+  await page.waitForFunction(() => document.querySelector("#weatherText")?.textContent === "18°C · Partly cloudy", null, { timeout: 4000 });
   assert.equal(asked, 1);
+  assert.equal(units, "celsius");
   const r = await page.$$eval("#readings li", (li) => li.map((x) => x.textContent));
-  assert.ok(r[3].includes("18°") && r[3].includes("Partly cloudy"), r.join(" | "));
+  assert.ok(r[3].includes("Daylight"), r.join(" | "));
   await page.click("#menuBtn");
   await page.waitForFunction(() => document.querySelector("#whereLine").textContent.startsWith("Alps"));
   assert.equal(await page.textContent("#whereLine"), "Alps · 212 m above sea level");
@@ -545,6 +569,66 @@ await check("real weather is asked for only with a real location, and shows up",
   await page.waitForFunction(() => document.querySelector("#whereLine").textContent.startsWith("Alps"));
   assert.match(await page.textContent("#whereLine"), /^Alps/);
 });
+
+await check("the weather prompt requests location and recovers from denied permission and failed weather", async (page) => {
+  let asked = 0;
+  await page.route("https://api.open-meteo.com/**", async (route) => {
+    asked++;
+    await new Promise((r) => setTimeout(r, 250));
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ current: asked === 1 ? {} : { temperature_2m: -3.6, weather_code: 73 } }) });
+  });
+  await page.addInitScript(() => {
+    window.locationRequests = 0;
+    navigator.geolocation.getCurrentPosition = (ok, fail) => {
+      window.locationRequests++;
+      if (window.locationRequests === 1) fail({ code: 1 });
+      else setTimeout(() => ok({ coords: { latitude: 43.653, longitude: -79.383 } }), 100);
+    };
+  });
+  await page.goto(BASE);
+  await page.click("#weatherBtn");
+  assert.equal(await page.textContent("#weatherText"), "Where are you?");
+  assert.match(await page.textContent("#toastText"), /Location wasn't shared/);
+  assert.equal(asked, 0);
+  await page.click("#weatherBtn");
+  await page.waitForFunction(() => document.querySelector("#weatherText").textContent === "Checking the weather…");
+  await page.waitForFunction(() => document.querySelector("#weatherText").textContent === "Weather unavailable · Retry");
+  await page.click("#weatherBtn");
+  await page.waitForFunction(() => document.querySelector("#weatherText").textContent === "-4°C · Snow");
+  assert.equal(asked, 2);
+  assert.equal(await page.evaluate(() => window.locationRequests), 2, "weather retry reuses the saved location");
+});
+
+await check("old Fahrenheit weather is converted even on an offline reload", async (page) => {
+  await page.addInitScript(() => {
+    const loc = { lat: 43.653, lon: -79.383 };
+    localStorage.setItem("dayshaper.prefs.v1", JSON.stringify({ loc, shapedOnce: true }));
+    localStorage.setItem("dayshaper.weather.v1", JSON.stringify({ ...loc, temp: 68, unit: "fahrenheit", code: 0, at: Date.now() }));
+    navigator.geolocation.getCurrentPosition = (_, fail) => fail({ code: 1 });
+  });
+  await page.goto(BASE);
+  await page.waitForFunction(() => document.querySelector("#weatherText").textContent === "20°C · Clear");
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  await page.context().setOffline(true);
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector("#weatherText").textContent === "20°C · Clear");
+});
+
+// Each viewport gets a fresh renderer, as it would on a separate device.
+for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 1000 }]) {
+  await check(`weather is centered and controls fit at ${viewport.width}×${viewport.height}`, async (page) => {
+    await page.goto(BASE + "?preview&wx=storm&temp=-18");
+    const box = await page.locator("#weatherBtn").boundingBox();
+    const title = await page.locator("#title").boundingBox();
+    assert.ok(Math.abs(box.x + box.width / 2 - viewport.width / 2) < 1, "weather centered");
+    assert.ok(box.y >= 0 && box.y + box.height <= title.y, "weather above title");
+    assert.ok(box.x >= 0 && box.x + box.width <= viewport.width, "weather fits");
+    await openShape(page);
+    assert.equal(await page.locator("#weatherBtn").isVisible(), true);
+    const tray = await page.locator("#tray").boundingBox();
+    assert.ok(tray.y + tray.height <= viewport.height, "shaping controls fit");
+  }, viewport);
+}
 
 await check("the moon wears tonight's phase", async (page) => {
   await page.clock.install({ time: new Date("2026-09-26T22:00:00") }); // full moon

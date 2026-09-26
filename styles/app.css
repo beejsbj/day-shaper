@@ -82,8 +82,11 @@ button, a { font: inherit; color: inherit; background: none; border: 0; cursor: 
   display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
-#top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 26px 20px 0 26px; min-height: 96px; }
-#top .words { min-width: 0; }
+#top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 14px 12px; padding: 16px 22px 0; }
+#weatherBtn { grid-column: 1 / -1; justify-self: center; max-width: 100%; min-height: 44px; height: auto; padding: 8px 16px; white-space: normal; font-size: 13px; color: var(--ink); }
+#weatherBtn[aria-busy="true"] { cursor: progress; }
+#top .words { grid-row: 2; min-width: 0; }
+#menuBtn, #doneBtn { grid-column: 2; grid-row: 2; }
 #title { font-size: var(--t-title); font-weight: 360; letter-spacing: -0.012em; line-height: 1.15; }
 #subtitle { margin-top: 6px; font-size: var(--t-sub); font-weight: var(--w-book); opacity: 0.78; line-height: 1.35; }
 #title, #subtitle { transition: opacity 0.35s ease; }
@@ -301,13 +304,13 @@ dialog[open] .name-sheet { animation: rise 0.42s var(--glide); }
 @media (min-width: 700px) and (min-height: 900px) {
   #app { max-width: 720px; }
   #dial { max-width: 620px; }
-  #top { padding: 40px 36px 0 40px; }
+  #top { padding: 24px 40px 0; }
   #title { font-size: 28px; }
   #subtitle { font-size: 15px; }
   #bottom { padding-bottom: 32px; }
 }
 @media (max-height: 720px) {
-  #top { padding-top: 16px; min-height: 80px; }
+  #top { padding-top: 10px; row-gap: 8px; }
   #title { font-size: 23px; }
   #subtitle { font-size: 13px; margin-top: 4px; }
   #readings { margin-bottom: 12px; padding-top: 12px; }
@@ -320,7 +323,7 @@ dialog[open] .name-sheet { animation: rise 0.42s var(--glide); }
   :root { --stone: 48px; }
 }
 @media (max-width: 380px) {
-  #top { padding-left: 22px; padding-right: 16px; }
+  #top { padding-left: 18px; padding-right: 18px; }
   #doneBtn { padding: 0 16px; }
   #subtitle { font-size: 13px; }
 }
