@@ -384,7 +384,9 @@ function draw(date, t, liftValues) {
     labelFor: (b) => `${blockName(b)}, ${fmtRange(b.start, b.start + b.len, hour12)}, ${fmtDur(b.len)}`,
   });
   const role = mode === "shape" ? "group" : "img";
-  const label = mode === "shape" ? "Your day. Tab to a block, then use the arrow keys to move it." : daySentence(view, t);
+  const solarSummary = sun.polar ? (sun.polar === "day" ? "Midnight sun." : "Polar night.")
+    : `Sunrise ${fmtTime(sun.sunrise, hour12)}. Sunset ${fmtTime(sun.sunset, hour12)}.`;
+  const label = (mode === "shape" ? "Your day. Tab to a block, then use the arrow keys to move it." : daySentence(view, t)) + " " + solarSummary;
   if (dialEl.getAttribute("role") !== role) dialEl.setAttribute("role", role);
   if (dialEl.getAttribute("aria-label") !== label) dialEl.setAttribute("aria-label", label);
   return busy;

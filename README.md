@@ -28,7 +28,7 @@ Tap **Shape your day**. Five clay stones give you somewhere to start: sleep, foc
 | Finish | Tap the center with no block selected, Done, or the sky outside the ring |
 | Undo | Use the toast or ⌘/Ctrl-Z |
 
-The ring crosses midnight, so a night's sleep stays one block. The round button beside **Shape your day** switches between noon and now at the top. In the menu, **Play the day** runs through it in 24 seconds; **Share this day** makes a link containing the schedule, including your block names.
+The ring crosses midnight, so a night's sleep stays one block. Sunrise and sunset sit on the ring, with their times around the rim. The round button beside **Shape your day** switches between noon and now at the top. In the menu, **Play the day** runs through it in 24 seconds; **Share this day** makes a link containing the schedule, including your block names.
 
 **Keyboard:** Tab to a block. ←/→ moves it; Shift+←/→ changes its end; Alt+←/→ changes its start. Enter renames, Delete removes, and Esc deselects or leaves shaping.
 

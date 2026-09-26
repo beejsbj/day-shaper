@@ -82,11 +82,11 @@ button, a { font: inherit; color: inherit; background: none; border: 0; cursor: 
   display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
-#top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 14px 12px; padding: 16px 22px 0; }
-#weatherBtn { grid-column: 1 / -1; justify-self: center; max-width: 100%; min-height: 44px; height: auto; padding: 8px 16px; white-space: normal; font-size: 13px; color: var(--ink); }
+#top { display: grid; grid-template-columns: minmax(44px, 1fr) minmax(0, auto) minmax(44px, 1fr); align-items: center; gap: 12px 8px; padding: 16px 22px 0; }
+#weatherBtn { grid-column: 2; grid-row: 1; justify-self: center; max-width: 100%; min-width: 0; min-height: 44px; height: auto; padding: 8px 12px; white-space: normal; font-size: 13px; color: var(--ink); }
 #weatherBtn[aria-busy="true"] { cursor: progress; }
-#top .words { grid-row: 2; min-width: 0; }
-#menuBtn, #doneBtn { grid-column: 2; grid-row: 2; }
+#top .words { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
+#menuBtn, #doneBtn { grid-column: 3; grid-row: 1; justify-self: end; }
 #title { font-size: var(--t-title); font-weight: 360; letter-spacing: -0.012em; line-height: 1.15; }
 #subtitle { margin-top: 6px; font-size: var(--t-sub); font-weight: var(--w-book); opacity: 0.78; line-height: 1.35; }
 #title, #subtitle { transition: opacity 0.35s ease; }
@@ -127,6 +127,12 @@ button.pill:active { transform: scale(0.95); }
 #dial .dots.hour { stroke-width: 3.2; stroke-opacity: 0.4; }
 #dial .veil { stroke: var(--sky-mid); }
 #dial .mark { fill: var(--ink); fill-opacity: 0.58; font-size: 10.5px; font-weight: 450; letter-spacing: 0.03em; }
+#dSolar { pointer-events: none; }
+#dial .solar-badge { fill: var(--sky-mid); stroke: var(--ink); stroke-width: 0.8; }
+#dial .solar-icon { color: var(--ink); }
+#dial .solar-pin { fill: var(--ink); }
+#dial .solar-leader { fill: none; stroke: var(--ink); stroke-width: 0.8; stroke-opacity: 0.5; }
+#dial .solar-label, #dial .solar-polar { fill: var(--ink); font-size: 10.5px; font-weight: 450; paint-order: stroke; stroke: var(--sky-mid); stroke-width: 2.5px; stroke-linejoin: round; }
 #dial .ghost { fill: none; stroke: var(--ink); stroke-opacity: 0.5; stroke-width: 1.2; stroke-dasharray: 3 4; }
 #dial .ghost-label { fill: var(--ink); fill-opacity: 0.8; font-size: 9.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 #dClay { filter: drop-shadow(0 6px 9px var(--shadow)); }
@@ -322,9 +328,12 @@ dialog[open] .name-sheet { animation: rise 0.42s var(--glide); }
   #readings .i { display: none; }
   :root { --stone: 48px; }
 }
+@media (max-width: 560px) {
+  #doneBtn { width: var(--tap); min-width: 44px; padding: 0; }
+  #doneBtn span { display: none; }
+}
 @media (max-width: 380px) {
   #top { padding-left: 18px; padding-right: 18px; }
-  #doneBtn { padding: 0 16px; }
   #subtitle { font-size: 13px; }
 }
 @media (max-width: 350px) {

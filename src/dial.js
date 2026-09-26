@@ -6,7 +6,7 @@
 import { TYPES, typeOf } from "./types.js";
 import { lighten, rgba } from "./color.js";
 import { mod24, wrapDelta } from "./engine.js";
-import { fmtHourMark } from "./time.js";
+import { fmtHourMark, fmtTime } from "./time.js";
 
 const NS = "http://www.w3.org/2000/svg";
 export const C = 200, R = 148;
@@ -90,8 +90,23 @@ export function createDial(svg) {
 
   const layer = (id) => el("g", { id }, svg);
   const gGlow = layer("dGlow"), gTrack = layer("dTrack"), gMarks = layer("dMarks"), gGhost = layer("dGhost");
-  const gClay = layer("dClay"), gLeave = layer("dLeave"), gVeil = layer("dVeil"), gHandles = layer("dHandles"), gNow = layer("dNow");
+  const gClay = layer("dClay"), gLeave = layer("dLeave"), gVeil = layer("dVeil"), gHandles = layer("dHandles");
+  const gSolar = layer("dSolar"), gNow = layer("dNow");
   const gOrb = layer("dOrb"), gText = layer("dText");
+  gSolar.setAttribute("aria-hidden", "true"); // the dial's accessible summary includes these times
+
+  const solarMarks = ["sunrise", "sunset"].map((kind) => {
+    const g = el("g", { class: "solar-marker", "data-event": kind }, gSolar);
+    const line = el("path", { class: "solar-leader" }, g);
+    const pin = el("circle", { r: 1.5, class: "solar-pin" }, g);
+    const badge = el("circle", { r: 8, class: "solar-badge" }, g);
+    const glyph = el("use", { href: "#i-" + kind, width: 13, height: 13, class: "solar-icon" }, g);
+    const path = el("path", { id: "solar-label-" + kind }, defs);
+    const text = el("text", { class: "solar-label", "text-anchor": "middle" }, g);
+    const label = el("textPath", { href: "#solar-label-" + kind, startOffset: "50%" }, text);
+    return { kind, g, line, pin, badge, glyph, path, label };
+  });
+  const polarLabel = el("text", { class: "solar-polar", x: C, y: 24, "text-anchor": "middle" }, gSolar);
 
   const glow = el("circle", { cx: C, cy: C, fill: "url(#orbGlow)" }, gGlow);
   const band = el("circle", { cx: C, cy: C, fill: "none", class: "track" }, gTrack);
@@ -165,12 +180,45 @@ export function createDial(svg) {
     set(pastDots, { d: tq > 0 ? arc(0, Math.max(0, tq - 0.25) + 0.0001, R) : "", "stroke-dasharray": `0 ${f(q)}`, opacity: f(1 - me) });
     set(hourDots, { "stroke-dasharray": `0 ${f(circ / 24)}`, transform: `rotate(${f((rot / 24) * 360)} ${C} ${C})`, opacity: f(lerp(0.9, 0.45, me)) });
 
-    // hour marks at the cardinal points
+    // The pins stay at the true solar hours. On very short days/nights only
+    // the captions spread apart, with leaders back to their exact positions.
+    const delta = wrapDelta(vm.sun.sunset - vm.sun.sunrise);
+    const spread = Math.max(0, (3.2 - Math.abs(delta)) / 2) * (Math.sign(delta) || 1);
+    const labelHours = [vm.sun.sunrise - spread, vm.sun.sunset + spread];
+    solarMarks.forEach((mark, i) => {
+      mark.g.style.display = vm.sun.polar ? "none" : "";
+      if (vm.sun.polar) return;
+      const hour = vm.sun[mark.kind], labelHour = labelHours[i];
+      // Nearly coincident events retain their exact pins; stagger the symbols
+      // across the ring so both arrows can still be seen.
+      const symbolR = Math.abs(delta) < 0.5 ? R + (i ? 9 : -9) : R;
+      const [px, py] = at(ang(hour), R), [x, y] = at(ang(hour), symbolR);
+      set(mark.pin, { cx: f(px), cy: f(py) });
+      set(mark.badge, { cx: f(x), cy: f(y) });
+      set(mark.glyph, { x: f(x - 6.5), y: f(y - 6.5) });
+      const [lx, ly] = at(ang(labelHour), r1 + 13);
+      set(mark.line, { d: `M${P(ang(hour), Math.min(R, symbolR))}L${f(lx)} ${f(ly)}` });
+      // Text follows the rim, so both captions fit even on narrow phones.
+      // Reverse the lower half's path to keep its lettering upright.
+      const reverse = Math.cos(ang(labelHour)) < 0;
+      const from = labelHour + (reverse ? 2 : -2), to = labelHour + (reverse ? -2 : 2);
+      const radius = r1 + (reverse ? 29 : 20);
+      set(mark.path, { d: `M${P(ang(from), radius)}A${radius} ${radius} 0 0 ${reverse ? 0 : 1} ${P(ang(to), radius)}` });
+      mark.label.textContent = `${i ? "Sunset" : "Sunrise"} · ${fmtTime(hour, vm.hour12)}`;
+    });
+    polarLabel.style.display = vm.sun.polar ? "" : "none";
+    polarLabel.textContent = vm.sun.polar === "day" ? "Midnight sun" : "Polar night";
+
+    // Solar captions take priority where an hour number would crowd them.
     const markR = r1 + 15;
     [0, 6, 12, 18].forEach((h, i) => {
       const [x, y] = at(ang(h), markR);
       set(markText[i], { x: f(x), y: f(y) });
       markText[i].textContent = fmtHourMark(h, vm.hour12);
+      const crowded = vm.sun.polar
+        ? Math.abs(wrapDelta(h + rot)) < 1.3
+        : labelHours.some((labelHour) => Math.abs(wrapDelta(h - labelHour)) < 1.6);
+      markText[i].style.display = crowded ? "none" : "";
     });
 
     // ghosts: where displaced blocks came from

@@ -29,8 +29,8 @@ const BASE = `http://localhost:${server.address().port}/`;
 
 const browser = await pw.chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const results = [];
-async function check(name, fn, viewport = { width: 390, height: 844 }) {
-  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+async function check(name, fn, contextOptions = {}) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, ...contextOptions });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -623,11 +623,86 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }
     assert.ok(Math.abs(box.x + box.width / 2 - viewport.width / 2) < 1, "weather centered");
     assert.ok(box.y >= 0 && box.y + box.height <= title.y, "weather above title");
     assert.ok(box.x >= 0 && box.x + box.width <= viewport.width, "weather fits");
+    const menu = await page.locator("#menuBtn").boundingBox();
+    assert.ok(Math.abs(menu.y + menu.height / 2 - box.y - box.height / 2) < 1, "weather and menu aligned");
+    assert.ok(box.x + box.width + 6 <= menu.x, "weather clears the menu");
     await openShape(page);
     assert.equal(await page.locator("#weatherBtn").isVisible(), true);
+    const weather = await page.locator("#weatherBtn").boundingBox();
+    const done = await page.locator("#doneBtn").boundingBox();
+    assert.ok(Math.abs(weather.x + weather.width / 2 - viewport.width / 2) < 1, "weather stays centered when shaping");
+    assert.ok(Math.abs(done.y + done.height / 2 - weather.y - weather.height / 2) < 1, "weather and Done aligned");
+    assert.ok(weather.x + weather.width + 6 <= done.x, "weather clears Done");
     const tray = await page.locator("#tray").boundingBox();
     assert.ok(tray.y + tray.height <= viewport.height, "shaping controls fit");
-  }, viewport);
+  }, { viewport });
+}
+
+await check("sunrise and sunset sit on the dial and follow its rotation", async (page) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(BASE + "?preview&at=10:00");
+  const labels = page.locator(".solar-label");
+  assert.deepEqual(await labels.allTextContents(), ["Sunrise · 6:06 AM", "Sunset · 6:21 PM"]);
+  assert.match(await page.locator("#dial").getAttribute("aria-label"), /Sunrise 6:06 AM\. Sunset 6:21 PM/);
+  const positions = () => page.locator(".solar-badge").evaluateAll((nodes) => nodes.map((n) => ({ x: +n.getAttribute("cx"), y: +n.getAttribute("cy") })));
+  const checkHours = (points, rot) => {
+    [6.1, 18.35].forEach((hour, i) => {
+      const a = (hour + rot) / 24 * Math.PI * 2;
+      assert.ok(Math.abs(points[i].x - (200 + 148 * Math.sin(a))) < 0.1);
+      assert.ok(Math.abs(points[i].y - (200 - 148 * Math.cos(a))) < 0.1);
+    });
+  };
+  checkHours(await positions(), 12);
+  await page.click("#nowTopBtn");
+  await page.waitForTimeout(60);
+  checkHours(await positions(), -10);
+  await openShape(page);
+  assert.equal(await page.locator('.solar-marker[data-event="sunrise"]').isVisible(), true);
+  assert.equal(await page.locator('.solar-marker[data-event="sunset"]').isVisible(), true);
+  await page.click("#doneBtn");
+  await page.click("#menuBtn");
+  await page.click('[data-act="hour12"]');
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => document.querySelector(".solar-label").textContent === "Sunrise · 06:06");
+  assert.deepEqual(await labels.allTextContents(), ["Sunrise · 06:06", "Sunset · 18:21"]);
+});
+
+await check("a very short winter day keeps both solar captions and symbols distinct", async (page) => {
+  await page.clock.install({ time: new Date("2026-11-27T12:00:00") });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addInitScript(() => {
+    localStorage.setItem("dayshaper.prefs.v1", JSON.stringify({ loc: { lat: 69.65, lon: 18.96 }, shapedOnce: true }));
+    navigator.geolocation.getCurrentPosition = (_, fail) => fail({ code: 1 });
+  });
+  await page.goto(BASE + "?at=12:00&wx=clear");
+  for (const shape of [false, true]) {
+    if (shape) await openShape(page);
+    await page.waitForFunction(() => document.querySelector(".solar-label").textContent.includes("Sunrise"));
+    const boxes = await page.locator(".solar-label").evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().toJSON()));
+    assert.equal(boxes.length, 2);
+    const [a, b] = boxes;
+    assert.ok(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top, "captions do not overlap");
+    const pins = await page.locator(".solar-pin").evaluateAll((nodes) => nodes.map((n) => ({ x: +n.getAttribute("cx"), y: +n.getAttribute("cy") })));
+    for (const pin of pins) assert.ok(Math.abs(Math.hypot(pin.x - 200, pin.y - 200) - 148) < 0.1, "true solar pins remain on the ring");
+    const symbols = await page.locator(".solar-badge").evaluateAll((nodes) => nodes.map((n) => ({ x: +n.getAttribute("cx"), y: +n.getAttribute("cy") })));
+    assert.ok(Math.hypot(symbols[0].x - symbols[1].x, symbols[0].y - symbols[1].y) > 16, "symbols do not overlap");
+  }
+}, { timezoneId: "Europe/Oslo" });
+
+for (const season of [{ date: "2026-06-21T12:00:00", label: "Midnight sun" }, { date: "2026-12-21T12:00:00", label: "Polar night" }]) {
+  await check(`the dial shows ${season.label.toLowerCase()} without fictitious crossings`, async (page) => {
+    await page.clock.install({ time: new Date(season.date) });
+    await page.addInitScript(() => {
+      localStorage.setItem("dayshaper.prefs.v1", JSON.stringify({ loc: { lat: 78.2, lon: 15.6 }, shapedOnce: true }));
+      navigator.geolocation.getCurrentPosition = (_, fail) => fail({ code: 1 });
+    });
+    await page.goto(BASE + "?at=12:00&wx=clear");
+    assert.equal(await page.locator(".solar-polar").textContent(), season.label);
+    assert.equal(await page.locator(".solar-polar").isVisible(), true);
+    assert.equal(await page.locator('.solar-marker[data-event="sunrise"]').isVisible(), false);
+    assert.equal(await page.locator('.solar-marker[data-event="sunset"]').isVisible(), false);
+    assert.ok((await page.locator("#dial").getAttribute("aria-label")).includes(season.label));
+  });
 }
 
 await check("the moon wears tonight's phase", async (page) => {
