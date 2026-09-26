@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Dayshaper",
   "short_name": "Dayshaper",
-  "description": "Shape your day with tactile planning on a living dial beneath the real sky.",
+  "description": "A tactile day planner on a ring of clay, under a sky that follows the sun. Install it, shape your day, and take it offline.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

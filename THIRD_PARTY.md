@@ -9,3 +9,8 @@ vector data. It is built from `ne_10m_geography_regions_polys`,
 Natural Earth data is public domain; see its [terms of use](https://www.naturalearthdata.com/about/terms-of-use/).
 
 The reproducible standard-library builder is `scripts/build-geography.py`.
+
+## Inter
+
+Inter is by Rasmus Andersson, distributed under the SIL Open Font License 1.1.
+The full license is in [fonts/LICENSE-Inter.txt](fonts/LICENSE-Inter.txt).

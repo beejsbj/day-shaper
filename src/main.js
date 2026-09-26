@@ -100,8 +100,16 @@ async function refreshWeather(force = false) {
 
 async function refreshGeography() {
   try {
-    const response = await fetch("data/geography.json");
-    if (!response.ok) return;
+    // Cache explicitly too: the first location lookup can finish before the
+    // service worker takes control. No coordinates enter this request.
+    const url = new URL("data/geography.json", location.href).href;
+    let response;
+    try { response = await fetch(url); } catch { /* use the saved map below */ }
+    if (response?.ok && "caches" in window) {
+      try { await (await caches.open("dayshaper-map-v1")).put(url, response.clone()); } catch { /* quota */ }
+    }
+    if (!response?.ok && "caches" in window) response = await caches.match(url);
+    if (!response?.ok) return;
     geographyData = await response.json();
     place = matchGeography(geographyData, prefs.loc);
     if (menu.open) syncMenu();
@@ -961,7 +969,7 @@ addEventListener("storage", (e) => {
 setPanels();
 setHint();
 if (mode === "shape") setPanels();
-if (!PREVIEW && prefs.loc) locate(false);
+if (!PREVIEW && prefs.loc) { refreshGeography(); locate(false); }
 else if (!PREVIEW && navigator.permissions?.query) {
   navigator.permissions.query({ name: "geolocation" }).then((s) => { if (s.state === "granted") locate(false); }).catch(() => {});
 }

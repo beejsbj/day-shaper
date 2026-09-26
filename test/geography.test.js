@@ -13,6 +13,10 @@ test("physical polygons respect boundaries, holes, and the antimeridian", () => 
   assert.equal(matchGeography(data, { lat: 0.1, lon: 0.1 }).relation, "inside");
   assert.equal(matchGeography(data, { lat: 0.5, lon: 0.5 }), null, "a hole is not part of the region");
   assert.equal(matchGeography(data, { lat: 11, lon: 180 }).name, "Dateline range");
+  assert.equal(matchGeography(data, { lat: 11, lon: 0 }), null, "dateline terrain must not cover Greenwich");
+  const river = { features: [feature("Dateline River", "L", [[[179, 11], [-179, 11]]], [-179, 11, 179, 11])] };
+  assert.equal(matchGeography(river, { lat: 11, lon: 0 }), null);
+  assert.equal(matchGeography(river, { lat: 11, lon: 180 }).name, "Dateline River");
 });
 
 test("nearby rivers use their segments and stop at 30 km", () => {

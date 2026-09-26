@@ -10,11 +10,14 @@ const unwrap = (lon, around) => around + ((((lon - around) + 540) % 360) - 180);
 
 function pointInRing(point, ring) {
   let inside = false;
+  // Unwrap around the feature, not the observer: otherwise a dateline ring
+  // appears to enclose Greenwich on the opposite side of the planet.
+  const origin = ring[0][0], longitude = unwrap(point.lon, origin);
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const a = ring[i], b = ring[j];
-    const ax = unwrap(a[0], point.lon), bx = unwrap(b[0], point.lon);
+    const ax = unwrap(a[0], origin), bx = unwrap(b[0], origin);
     if ((a[1] > point.lat) !== (b[1] > point.lat)
-      && point.lon < (bx - ax) * (point.lat - a[1]) / (b[1] - a[1]) + ax) inside = !inside;
+      && longitude < (bx - ax) * (point.lat - a[1]) / (b[1] - a[1]) + ax) inside = !inside;
   }
   return inside;
 }
@@ -23,7 +26,7 @@ function distanceToSegment(point, a, b) {
   const scale = Math.cos(point.lat * Math.PI / 180);
   const ax = (unwrap(a[0], point.lon) - point.lon) * 111.320 * scale;
   const ay = (a[1] - point.lat) * EARTH_KM_PER_LAT;
-  const bx = (unwrap(b[0], point.lon) - point.lon) * 111.320 * scale;
+  const bx = (unwrap(b[0], unwrap(a[0], point.lon)) - point.lon) * 111.320 * scale;
   const by = (b[1] - point.lat) * EARTH_KM_PER_LAT;
   const dx = bx - ax, dy = by - ay;
   const length = dx * dx + dy * dy;

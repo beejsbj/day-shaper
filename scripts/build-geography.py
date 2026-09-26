@@ -31,7 +31,7 @@ def name_of(properties):
 
 
 def display_name(name, source):
-    if source == "lake" and not any(word in name.lower() for word in ("lake", "sea", "lagoon", "loch", "loough")):
+    if source == "lake" and not any(word in name.lower() for word in ("lake", "sea", "lagoon", "loch", "lough")):
         return "Lake " + name
     return name
 
@@ -50,8 +50,6 @@ def perpendicular_distance(point, start, end):
 
 
 def simplify_open(points):
-    if len(points) < 3:
-        return points
     if len(points) < 3:
         return points
     keep = {0, len(points) - 1}
