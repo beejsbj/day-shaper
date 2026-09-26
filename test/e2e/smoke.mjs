@@ -643,6 +643,7 @@ await check("sunrise and sunset sit on the dial and follow its rotation", async 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(BASE + "?preview&at=10:00");
   const labels = page.locator(".solar-label");
+  await page.waitForFunction(() => document.querySelector(".solar-label")?.textContent);
   assert.deepEqual(await labels.allTextContents(), ["Sunrise · 6:06 AM", "Sunset · 6:21 PM"]);
   assert.match(await page.locator("#dial").getAttribute("aria-label"), /Sunrise 6:06 AM\. Sunset 6:21 PM/);
   const positions = () => page.locator(".solar-badge").evaluateAll((nodes) => nodes.map((n) => ({ x: +n.getAttribute("cx"), y: +n.getAttribute("cy") })));
