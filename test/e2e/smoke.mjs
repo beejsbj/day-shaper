@@ -120,6 +120,7 @@ await check("iOS gets manual Add to Home Screen guidance", async (page) => {
 await check("installed standalone app hides its install affordance", async (page) => {
   await page.addInitScript(() => Object.defineProperty(navigator, "standalone", { value: true }));
   await page.goto(BASE);
+  await page.click("#menuBtn");
   assert.equal(await page.locator("#installBtn").isHidden(), true);
 });
 
