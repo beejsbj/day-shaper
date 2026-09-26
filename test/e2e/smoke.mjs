@@ -150,6 +150,23 @@ await check("offline reload and shared-day URL use the cached generic shell", as
   assert.equal(await page.locator("#title").isVisible(), true);
 });
 
+await check("returning location updates share one map download", async (page) => {
+  let downloads = 0;
+  await page.addInitScript(() => {
+    localStorage.setItem("dayshaper.prefs.v1", JSON.stringify({ loc: { lat: 43.653, lon: -79.383 }, shapedOnce: true }));
+    navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 25, longitude: 0 } });
+  });
+  await page.route("**/data/geography.json", async (route) => {
+    downloads++;
+    await new Promise((r) => setTimeout(r, 250));
+    await route.fulfill({ contentType: "application/json", body: await readFile(join(ROOT, "data/geography.json")) });
+  });
+  await page.goto(BASE + "?wx=clear&temp=18");
+  await page.click("#menuBtn");
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent === "Sahara");
+  assert.equal(downloads, 1);
+});
+
 await check("first offline location lookup and later travel use the installed map", async (page) => {
   await page.goto(BASE);
   await page.waitForFunction(() => navigator.serviceWorker.controller);

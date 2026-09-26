@@ -86,6 +86,7 @@ let wxRaw = forcedWx || (() => {
 })();
 let wx = weatherView(wxRaw);
 let geographyData = null;
+let geographyLoading = null;
 let place = null;
 async function refreshWeather(force = false) {
   if (forcedWx || PREVIEW || !prefs.loc || navigator.onLine === false) return;
@@ -102,14 +103,17 @@ async function refreshGeography() {
   if (PREVIEW || !prefs.loc) return;
   try {
     if (!geographyData) {
-      // The map is precached with the installed shell. No coordinates enter
-      // this request, and a loaded map can describe any later location.
-      const url = new URL("data/geography.json", location.href).href;
-      let response;
-      try { response = await fetch(url); } catch { /* offline cache below */ }
-      if (!response?.ok && "caches" in window) response = await caches.match(url);
-      if (!response?.ok) return;
-      geographyData = await response.json();
+      geographyLoading ||= (async () => {
+        // The map is precached with the installed shell. No coordinates enter
+        // this request. Concurrent location updates share this one load.
+        const url = new URL("data/geography.json", location.href).href;
+        let response;
+        try { response = await fetch(url); } catch { /* offline cache below */ }
+        if (!response?.ok && "caches" in window) response = await caches.match(url);
+        return response?.ok ? response.json() : null;
+      })().finally(() => { geographyLoading = null; });
+      geographyData = await geographyLoading;
+      if (!geographyData) return;
     }
     place = matchGeography(geographyData, prefs.loc);
     if (menu.open) syncMenu();
