@@ -131,6 +131,8 @@ await check("install fallback can be dismissed", async (page) => {
   assert.match(await page.textContent("#installMessage"), /browser does not offer an install prompt/i);
   await page.locator("#installDlg button[value=close]").click();
   assert.equal(await page.locator("#installDlg").isVisible(), false);
+  await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+  assert.equal(await page.locator("#installBtn").isHidden(), true);
 });
 
 await check("offline reload and shared-day URL use the cached generic shell", async (page) => {
@@ -492,8 +494,16 @@ await check("real weather is asked for only with a real location, and shows up",
   const r = await page.$$eval("#readings li", (li) => li.map((x) => x.textContent));
   assert.ok(r[3].includes("18°") && r[3].includes("Partly cloudy"), r.join(" | "));
   await page.click("#menuBtn");
-  assert.equal(await page.textContent("#whereLine"), "Your location · 212 m above sea level");
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent.startsWith("Alps"));
+  assert.equal(await page.textContent("#whereLine"), "Alps · 212 m above sea level");
   assert.equal(await page.textContent("#locNote"), "46.95° N, 7.45° E");
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  await page.waitForFunction(async () => !!(await caches.match(new URL("data/geography.json", location.href).href)));
+  await page.context().setOffline(true);
+  await page.reload();
+  await page.click("#menuBtn");
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent.startsWith("Alps"));
+  assert.match(await page.textContent("#whereLine"), /^Alps/);
 });
 
 await check("the moon wears tonight's phase", async (page) => {
