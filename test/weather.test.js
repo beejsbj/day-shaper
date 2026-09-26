@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { describeCode, weatherView, weatherize, tempUnit, fetchWeather, weatherFromParam } from "../src/weather.js";
+import { describeCode, weatherView, weatherize, fetchWeather, weatherFromParam } from "../src/weather.js";
 import { describe, readings, geography } from "../src/context.js";
 import { skyAt } from "../src/sky.js";
 import { contrast, mix } from "../src/color.js";
@@ -20,20 +20,20 @@ test("rain names the afternoon, like the mood board's card", () => {
   const wx = weatherView({ temp: 12.4, code: 63 });
   const ctx = describe({ t: 15.2, date, blocks: [], sun, hour12: true, wx });
   assert.equal(ctx.title, "Rainy afternoon");
-  assert.equal(ctx.subtitle, "Rain · 12°");
-  // clear weather only adds the temperature to the greeting
+  assert.equal(ctx.subtitle, "Saturday, September 26");
+  // Weather leaves the greeting subtitle clear for the date.
   const clear = describe({ t: 9, date, blocks: [], sun, hour12: true, wx: weatherView({ temp: 18, code: 0 }) });
   assert.equal(clear.title, "Good morning");
-  assert.match(clear.subtitle, /· 18° clear$/);
+  assert.equal(clear.subtitle, "Saturday, September 26");
   // being inside a block still wins
   const busy = describe({ t: 15.2, date, blocks: [{ id: "a", type: "work", start: 14, len: 2 }], sun, hour12: true, wx });
   assert.equal(busy.title, "Focus");
 });
 
-test("the weather takes the daylight reading's place when known", () => {
+test("weather leaves the daylight reading in place", () => {
   const wx = weatherView({ temp: 21, code: 2 });
   const r = readings({ t: 10, blocks: [], sun, hour12: true, next: null, wx });
-  assert.deepEqual(r[3], { icon: "partly", label: "Partly cloudy", value: "21°" });
+  assert.equal(r[3].label, "Daylight");
   assert.equal(readings({ t: 10, blocks: [], sun, hour12: true, next: null })[3].label, "Daylight");
 });
 
@@ -49,20 +49,25 @@ test("a grey sky keeps its words readable", () => {
   }
 });
 
-test("Fahrenheit only where it is read", () => {
-  assert.equal(tempUnit("en-US"), "fahrenheit");
-  assert.equal(tempUnit("en-GB"), "celsius");
-  assert.equal(tempUnit("hi-IN"), "celsius");
+test("weatherView always presents Celsius, converting cached Fahrenheit", () => {
+  assert.deepEqual([weatherView({ temp: 68, code: 0, unit: "fahrenheit" }).temp, weatherView({ temp: 68, code: 0, unit: "fahrenheit" }).unit], [20, "C"]);
+  assert.equal(weatherView({ temp: 32, code: 0, unit: "fahrenheit" }).temp, 0);
+  assert.equal(weatherView({ temp: -4, code: 0, unit: "fahrenheit" }).temp, -20);
+  assert.equal(weatherView({ temp: 20.4, code: 0, unit: "celsius" }).temp, 20);
+  for (const temp of [null, "", " ", false, NaN, Infinity]) assert.equal(weatherView({ temp, code: 0 }), null);
 });
 
 test("fetchWeather asks Open-Meteo for the right place and reads the answer", async () => {
   let asked;
   const fake = async (url) => { asked = String(url); return { ok: true, json: async () => ({ elevation: 27, current: { temperature_2m: 14.6, weather_code: 51, cloud_cover: 100 } }) }; };
-  const w = await fetchWeather({ lat: 40.7128, lon: -74.006 }, "celsius", fake);
+  const w = await fetchWeather({ lat: 40.7128, lon: -74.006 }, fake);
   assert.match(asked, /latitude=40\.71&longitude=-74\.01/);
   assert.equal(w.temp, 14.6);
+  assert.equal(w.unit, "celsius");
+  assert.match(asked, /temperature_unit=celsius/);
   assert.equal(weatherView(w).label, "Drizzle");
-  await assert.rejects(fetchWeather({ lat: 0, lon: 0 }, "celsius", async () => ({ ok: false, status: 500 })));
+  await assert.rejects(fetchWeather({ lat: 0, lon: 0 }, async () => ({ ok: false, status: 500 })));
+  await assert.rejects(fetchWeather({ lat: 0, lon: 0 }, async () => ({ ok: true, json: async () => ({ current: { temperature_2m: null, weather_code: 0 } }) })), /invalid weather response/);
 });
 
 test("location reads as geography", () => {

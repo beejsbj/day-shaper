@@ -13,7 +13,7 @@ import { matchGeography } from "./geography.js";
 import { hourOf, detectHour12, clockParts, fmtTime, fmtNow, fmtRange, fmtDur } from "./time.js";
 import { loadBlocks, saveBlocks, loadPrefs, savePrefs, createHistory, encodeDay, decodeDay, storageWorks, cleanName } from "./store.js";
 import { moonPhase } from "./moon.js";
-import { weatherView, weatherize, fetchWeather, tempUnit, weatherFromParam } from "./weather.js";
+import { weatherView, weatherize, fetchWeather, weatherFromParam } from "./weather.js";
 import { installSprite, icon } from "./icons.js";
 import { mixDeep, lighten, luminance } from "./color.js";
 import { createScene } from "./scene.js";
@@ -85,18 +85,49 @@ let wxRaw = forcedWx || (() => {
   } catch { return null; }
 })();
 let wx = weatherView(wxRaw);
+let locating = false, weatherLoading = false, weatherFailed = false;
+let weatherRequest = 0;
 let geographyData = null;
 let geographyLoading = null;
 let place = null;
 async function refreshWeather(force = false) {
-  if (forcedWx || PREVIEW || !prefs.loc || navigator.onLine === false) return;
-  if (!force && wxRaw && Date.now() - wxRaw.at < 30 * 60e3) return;
+  if (forcedWx || PREVIEW || !prefs.loc) return;
+  if (navigator.onLine === false) { request(); return; }
+  if (!force && (weatherLoading || (wx && Date.now() - wxRaw.at < 30 * 60e3))) return;
+  const id = ++weatherRequest;
+  const at = { ...prefs.loc };
+  weatherLoading = true;
+  weatherFailed = false;
+  request();
   try {
-    const w = await fetchWeather(prefs.loc, tempUnit());
+    const w = await fetchWeather(at);
+    if (id !== weatherRequest) return;
     wxRaw = w; wx = weatherView(w);
     try { localStorage.setItem(WX_KEY, JSON.stringify(w)); } catch { /* full */ }
-    request();
-  } catch { /* offline or refused: keep what we had */ }
+  } catch { if (id === weatherRequest) weatherFailed = true; }
+  finally {
+    if (id === weatherRequest) { weatherLoading = false; request(); }
+  }
+}
+
+function renderWeather() {
+  // Conditions stay in the same place in live, shaping, and playback modes.
+  let label, glyph = "pin";
+  if (wx) { label = `${wx.temp}°C · ${wx.label}`; glyph = wx.icon; }
+  else if (locating) label = "Finding you…";
+  else if (!prefs.loc) label = "Where are you?";
+  else if (weatherLoading) label = "Checking the weather…";
+  else if (navigator.onLine === false) label = "Weather offline";
+  else label = "Weather unavailable · Retry";
+  const button = $("weatherBtn");
+  const busy = locating || weatherLoading;
+  button.setAttribute("aria-busy", String(busy));
+  button.title = !prefs.loc ? "Share your location for the weather and the local sun"
+    : wx && (weatherFailed || navigator.onLine === false) ? "Last known weather · tap to retry"
+    : "Update your location and weather";
+  const node = $("weatherIcon");
+  if (node.dataset.icon !== glyph) { node.innerHTML = icon(glyph); node.dataset.icon = glyph; }
+  setText($("weatherText"), label);
 }
 
 async function refreshGeography() {
@@ -294,6 +325,7 @@ function breathe() {
 /* ---------------- drawing ---------------- */
 let lastWords = "", swapTimer = 0;
 function draw(date, t, liftValues) {
+  renderWeather();
   const sky = weatherize(skyAt(t, sun), wx);
   scene.paint(sky, t, sun, { moon: moonPhase(date), wx, south: loc.lat < 0 });
   const view = drag?.result || stone?.result || blocks;
@@ -414,7 +446,7 @@ function shapeReadout(t, view) {
 
 let lastReadings = "";
 function renderReadings(t, view, ctx) {
-  const list = readings({ t, blocks: view, sun, hour12, next: ctx.next, wx });
+  const list = readings({ t, blocks: view, sun, hour12, next: ctx.next });
   const key = JSON.stringify(list);
   if (key === lastReadings) return;
   lastReadings = key;
@@ -604,7 +636,7 @@ function endDrag(e, cancelled) {
     if (cancelled) { setHint(); request(); return; }
     // a tap: select (or let go of) a block; a tap on the orb names the chosen one
     if (d.id) { selectedId = selectedId === d.id ? null : d.id; kick(d.id, 3); haptic(5); announceBlock(d.id); }
-    else if (d.kind === "spin" && selectedId) { openName(selectedId); }
+    else if (d.kind === "spin") { if (selectedId) openName(selectedId); else exitShape(); }
     else selectedId = null;
     setHint();
     request();
@@ -893,6 +925,12 @@ function syncMenu() {
   setText($("menuSub"), shapedSummary(blocks) + " · sunrise " + fmtTime(sun.sunrise, hour12) + ", sunset " + fmtTime(sun.sunset, hour12));
 }
 $("menuBtn").addEventListener("click", () => { syncMenu(); menu.showModal(); });
+$("weatherBtn").addEventListener("click", () => {
+  if (locating || weatherLoading) return;
+  // A failed request can be retried at the saved location without another GPS fix.
+  if (prefs.loc && (!wx || weatherFailed)) refreshWeather(true);
+  else locate(true);
+});
 menu.addEventListener("click", (e) => {
   if (e.target === menu) { menu.close(); return; } // tap on the backdrop
   const item = e.target.closest("[data-act]");
@@ -907,10 +945,19 @@ menu.addEventListener("click", (e) => {
 });
 
 function locate(ask) {
+  if (locating) return;
   if (!navigator.geolocation) { if (ask) toast("Location isn't available here", false); return; }
+  locating = true;
+  request();
   navigator.geolocation.getCurrentPosition(
     (pos) => {
+      locating = false;
       loc = { lat: +pos.coords.latitude.toFixed(3), lon: +pos.coords.longitude.toFixed(3) };
+      if (!forcedWx && (!prefs.loc || Math.abs(loc.lat - prefs.loc.lat) >= 0.1 || Math.abs(loc.lon - prefs.loc.lon) >= 0.1)) {
+        // A response for the previous location must never repaint the new one.
+        weatherRequest++; weatherLoading = false; wxRaw = null; wx = null;
+        try { localStorage.removeItem(WX_KEY); } catch { /* blocked */ }
+      }
       prefs.loc = loc; persistPrefs();
       place = geographyData ? matchGeography(geographyData, loc) : null;
       sunKey = ""; refreshSun(clockDate());
@@ -919,7 +966,11 @@ function locate(ask) {
       if (ask) { syncMenu(); toast("Sunrise " + fmtTime(sun.sunrise, hour12) + " · sunset " + fmtTime(sun.sunset, hour12), false); }
       request();
     },
-    () => { if (ask) toast("Couldn't get your location — using your time zone", false); },
+    () => {
+      locating = false;
+      if (ask) toast(prefs.loc ? "Couldn't update your location — keeping the last one" : "Location wasn't shared — allow it in your browser and try again", false);
+      request();
+    },
     { timeout: 8000, maximumAge: 6 * 3600e3 },
   );
 }
@@ -962,6 +1013,8 @@ function tick() {
   setTimeout(tick, 60000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 30);
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { lastFrame = performance.now(); refreshWeather(); request(); } });
+addEventListener("online", () => { refreshWeather(); request(); });
+addEventListener("offline", request);
 addEventListener("resize", request);
 reduceMotion.addEventListener?.("change", request);
 addEventListener("storage", (e) => {

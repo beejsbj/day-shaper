@@ -1,6 +1,6 @@
 /* Weather, only from where you actually are. Open-Meteo (free, no key) gives
    the current conditions; this module turns them into what the sky, the words
-   and the readings need. Everything but fetchWeather is pure. */
+   and the header need. Everything but fetchWeather is pure. */
 
 import { mix } from "./color.js";
 import { inkUp } from "./sky.js";
@@ -43,13 +43,15 @@ export function describeCode(code) {
  * @param {{temp:number, code:number, cover?:number, unit?:string, elevation?:number}} raw
  */
 export function weatherView(raw) {
-  if (!raw || !Number.isFinite(Number(raw.temp))) return null;
+  if (!raw || typeof raw.temp !== "number" || !Number.isFinite(raw.temp)) return null;
   const { kind, label } = describeCode(raw.code);
   const k = KINDS[kind];
   const cover = Number.isFinite(raw.cover) ? Math.max(k.cover, raw.cover / 100) : k.cover;
+  const temp = Number(raw.temp);
+  const celsius = raw.unit === "fahrenheit" ? (temp - 32) * 5 / 9 : temp;
   return {
     kind, label, icon: k.icon, word: k.word,
-    temp: Math.round(raw.temp), unit: raw.unit === "fahrenheit" ? "F" : "C",
+    temp: Math.round(celsius), unit: "C",
     cover: Math.min(1, cover), rain: k.rain || 0, snow: k.snow || 0, fog: k.fog || 0,
     wet: !!(k.rain || k.snow),
     elevation: Number.isFinite(raw.elevation) ? raw.elevation : null,
@@ -72,19 +74,12 @@ export function weatherize(sky, wx) {
   return inkUp(sky);
 }
 
-/** Fahrenheit where people read it. */
-export function tempUnit(locale = (typeof navigator !== "undefined" && navigator.language) || "en") {
-  let region = "";
-  try { region = new Intl.Locale(locale).maximize().region || ""; } catch { region = (locale.split("-")[1] || "").toUpperCase(); }
-  return ["US", "LR", "MM", "BS", "BZ", "KY", "PW", "FM", "MH"].includes(region) ? "fahrenheit" : "celsius";
-}
-
 /** Current conditions at loc. Rejects on any failure; the caller keeps whatever it had. */
-export async function fetchWeather(loc, unit, fetchImpl = fetch) {
+export async function fetchWeather(loc, fetchImpl = fetch) {
   const u = new URL("https://api.open-meteo.com/v1/forecast");
   u.search = new URLSearchParams({
     latitude: loc.lat.toFixed(2), longitude: loc.lon.toFixed(2), // ~1 km: enough for weather, no more
-    current: "temperature_2m,weather_code,cloud_cover", temperature_unit: unit, timezone: "auto",
+    current: "temperature_2m,weather_code,cloud_cover", temperature_unit: "celsius", timezone: "auto",
   });
   const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = ctl && setTimeout(() => ctl.abort(), 8000);
@@ -93,7 +88,9 @@ export async function fetchWeather(loc, unit, fetchImpl = fetch) {
     if (!res.ok) throw new Error("weather " + res.status);
     const j = await res.json();
     const c = j.current || {};
-    return { temp: c.temperature_2m, code: c.weather_code, cover: c.cloud_cover, unit, elevation: j.elevation, at: Date.now(), lat: loc.lat, lon: loc.lon };
+    const weather = { temp: c.temperature_2m, code: c.weather_code, cover: c.cloud_cover, unit: "celsius", elevation: j.elevation, at: Date.now(), lat: loc.lat, lon: loc.lon };
+    if (!weatherView(weather)) throw new Error("invalid weather response");
+    return weather;
   } finally { if (timer) clearTimeout(timer); }
 }
 
