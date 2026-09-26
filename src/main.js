@@ -9,6 +9,7 @@ import { TYPES, typeOf, sampleDay } from "./types.js";
 import { skyAt } from "./sky.js";
 import { sunForDate, guessLocation } from "./solar.js";
 import { describe, readings, shapedSummary, geography, blockName } from "./context.js";
+import { matchGeography } from "./geography.js";
 import { hourOf, detectHour12, clockParts, fmtTime, fmtNow, fmtRange, fmtDur } from "./time.js";
 import { loadBlocks, saveBlocks, loadPrefs, savePrefs, createHistory, encodeDay, decodeDay, storageWorks, cleanName } from "./store.js";
 import { moonPhase } from "./moon.js";
@@ -84,6 +85,8 @@ let wxRaw = forcedWx || (() => {
   } catch { return null; }
 })();
 let wx = weatherView(wxRaw);
+let geographyData = null;
+let place = null;
 async function refreshWeather(force = false) {
   if (forcedWx || PREVIEW || !prefs.loc || navigator.onLine === false) return;
   if (!force && wxRaw && Date.now() - wxRaw.at < 30 * 60e3) return;
@@ -93,6 +96,16 @@ async function refreshWeather(force = false) {
     try { localStorage.setItem(WX_KEY, JSON.stringify(w)); } catch { /* full */ }
     request();
   } catch { /* offline or refused: keep what we had */ }
+}
+
+async function refreshGeography() {
+  try {
+    const response = await fetch("data/geography.json");
+    if (!response.ok) return;
+    geographyData = await response.json();
+    place = matchGeography(geographyData, prefs.loc);
+    if (menu.open) syncMenu();
+  } catch { /* offline or first-use cache miss: coordinates still describe the place */ }
 }
 
 /* ---------------- DOM ---------------- */
@@ -862,7 +875,7 @@ $("app").addEventListener("click", (e) => {
 const menu = $("menu");
 function syncMenu() {
   menu.querySelector('[data-act="hour12"]').setAttribute("aria-checked", String(!hour12));
-  const geo = geography(loc, wxRaw && prefs.loc ? wxRaw.elevation ?? null : null);
+  const geo = geography(loc, wxRaw && prefs.loc ? wxRaw.elevation ?? null : null, place);
   setText($("whereLine"), prefs.loc ? geo.line : "Where you are");
   setText($("locNote"), prefs.loc ? geo.detail : "Guessed from your time zone · tap for the true sun and the weather");
   setText($("menuSub"), shapedSummary(blocks) + " · sunrise " + fmtTime(sun.sunrise, hour12) + ", sunset " + fmtTime(sun.sunset, hour12));
@@ -889,6 +902,7 @@ function locate(ask) {
       prefs.loc = loc; persistPrefs();
       sunKey = ""; refreshSun(clockDate());
       refreshWeather(true).then(() => { if (menu.open) syncMenu(); });
+      refreshGeography(); // same-origin data only; no location is included in its URL
       if (ask) { syncMenu(); toast("Sunrise " + fmtTime(sun.sunrise, hour12) + " · sunset " + fmtTime(sun.sunset, hour12), false); }
       request();
     },

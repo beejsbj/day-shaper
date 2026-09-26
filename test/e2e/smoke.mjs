@@ -492,8 +492,8 @@ await check("real weather is asked for only with a real location, and shows up",
   const r = await page.$$eval("#readings li", (li) => li.map((x) => x.textContent));
   assert.ok(r[3].includes("18°") && r[3].includes("Partly cloudy"), r.join(" | "));
   await page.click("#menuBtn");
-  assert.equal(await page.textContent("#whereLine"), "Temperate north · 212 m above the sea");
-  assert.match(await page.textContent("#locNote"), /46\.95° N, 7\.45° E · 5,220 km north of the equator/);
+  assert.equal(await page.textContent("#whereLine"), "Your location · 212 m above sea level");
+  assert.equal(await page.textContent("#locNote"), "46.95° N, 7.45° E");
 });
 
 await check("the moon wears tonight's phase", async (page) => {
