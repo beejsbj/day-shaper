@@ -78,6 +78,75 @@ await check("loads calm and tells the moment", async (page) => {
   assert.equal((await page.$$("#readings li")).length, 4);
 });
 
+await check("static SEO and manifest contract", async (page) => {
+  await page.goto(BASE);
+  assert.equal(await page.title(), "Dayshaper — Shape your day");
+  assert.equal(await page.locator('link[rel="canonical"]').getAttribute("href"), "https://dayshaper.burooj.dev/");
+  assert.equal(await page.locator('meta[property="og:type"]').getAttribute("content"), "website");
+  assert.equal(await page.locator('meta[property="og:site_name"]').getAttribute("content"), "Dayshaper");
+  assert.equal(await page.locator('meta[property="og:image:width"]').getAttribute("content"), "1200");
+  assert.equal(await page.locator('meta[property="og:image:height"]').getAttribute("content"), "630");
+  assert.ok(await page.locator('meta[name="twitter:image:alt"]').count());
+  const schema = await page.locator('script[type="application/ld+json"]').textContent();
+  assert.equal(JSON.parse(schema)["@type"], "WebApplication");
+  const staticCard = await page.request.get(BASE + "?day=w36.8BROKENe51.3").then((r) => r.text());
+  assert.match(staticCard, /Dayshaper is a tactile day planner that shows the changing real sky/);
+  const design = await page.request.get(BASE + "design-system/");
+  assert.match(await design.text(), /<title>Dayshaper Design System<\/title>/);
+  assert.match(await design.text(), /https:\/\/dayshaper\.burooj\.dev\/design-system\//);
+  const packageInfo = await page.request.get(BASE + "package.json").then((r) => r.json());
+  assert.equal(packageInfo.name, "dayshaper");
+  assert.equal(packageInfo.private, true);
+  const manifest = await page.evaluate(async () => fetch(document.querySelector('link[rel="manifest"]').href).then((r) => r.json()));
+  assert.equal(manifest.id, "/");
+  assert.equal(manifest.name, "Dayshaper");
+  assert.equal(manifest.start_url, "/");
+  assert.equal(manifest.scope, "/");
+  assert.equal(manifest.display, "standalone");
+  assert.ok(manifest.icons.some((icon) => icon.purpose === "maskable"));
+});
+
+await check("iOS gets manual Add to Home Screen guidance", async (page) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "userAgent", { value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1" });
+    Object.defineProperty(navigator, "platform", { value: "iPhone" });
+  });
+  await page.goto(BASE);
+  await page.click("#menuBtn");
+  await page.click("#installBtn");
+  assert.match(await page.textContent("#installMessage"), /Share button in Safari.*Add to Home Screen/i);
+});
+
+await check("installed standalone app hides its install affordance", async (page) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, "standalone", { value: true }));
+  await page.goto(BASE);
+  assert.equal(await page.locator("#installBtn").isHidden(), true);
+});
+
+await check("install fallback can be dismissed", async (page) => {
+  await page.goto(BASE);
+  await page.click("#menuBtn");
+  await page.click("#installBtn");
+  assert.equal(await page.locator("#installDlg").isVisible(), true);
+  assert.match(await page.textContent("#installMessage"), /browser does not offer an install prompt/i);
+  await page.locator("#installDlg button[value=close]").click();
+  assert.equal(await page.locator("#installDlg").isVisible(), false);
+});
+
+await check("offline reload and shared-day URL use the cached generic shell", async (page) => {
+  await page.goto(BASE + "?day=0");
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  await page.reload();
+  await page.waitForTimeout(200);
+  await page.context().setOffline(true);
+  await page.reload();
+  assert.equal(await page.title(), "Dayshaper — Shape your day");
+  await page.goto(BASE + "?day=w36.8BROKENe51.3");
+  assert.equal(await page.title(), "Dayshaper — Shape your day");
+  assert.equal(await page.locator("#app").count(), 1);
+  assert.equal(await page.locator("#title").isVisible(), true);
+});
+
 await check("tap the dial to start shaping, Done to return", async (page) => {
   await page.goto(BASE + "?preview&at=10:00");
   const c = await pt(page, 0, 0);

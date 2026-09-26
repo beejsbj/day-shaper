@@ -1,4 +1,4 @@
-/* Day Shaper — the cascade engine.
+/* Dayshaper — the cascade engine.
    The day is a ring of 24 hours. Blocks sit on it without overlapping and may
    cross midnight (sleep 23:30 → 07:00 is one block). Every edit is a pure
    function of a snapshot: the block being handled is pinned where the hand

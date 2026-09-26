@@ -1,4 +1,4 @@
-/* Day Shaper — wiring. State lives here; everything it draws comes from pure
+/* Dayshaper — wiring. State lives here; everything it draws comes from pure
    modules (engine, sky, context) and two renderers (scene, dial). */
 
 import {
@@ -17,6 +17,7 @@ import { installSprite, icon } from "./icons.js";
 import { mixDeep, lighten, luminance } from "./color.js";
 import { createScene } from "./scene.js";
 import { createDial, R } from "./dial.js";
+import "./install.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);

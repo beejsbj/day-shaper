@@ -22,6 +22,7 @@ const P = {
   pause: '<path d="M9 5.5v13M15 5.5v13"/>',
   pin: '<path d="M12 20.8s-6.2-5.9-6.2-11a6.2 6.2 0 0 1 12.4 0c0 5.1-6.2 11-6.2 11z"/><circle cx="12" cy="9.8" r="2.2"/>',
   share: '<path d="M12 14.5V3.8"/><path d="M8.2 7.4 12 3.6l3.8 3.8"/><path d="M5.5 12.5v5.3a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-5.3"/>',
+  install: '<path d="M12 14V3.5M8 7.5l4-4 4 4"/><path d="M5 13.5v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>',
   clock: '<circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3.1 2"/>',
   top: '<circle cx="12" cy="13" r="7.4"/><circle cx="12" cy="5.6" r="1.8" fill="currentColor"/>',
   reset: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.2v4.2h4.2"/>',
