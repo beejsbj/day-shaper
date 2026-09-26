@@ -3,3 +3,7 @@ test/
 .github/
 .claude/
 node_modules/
+.env*
+scripts/
+README.md
+THIRD_PARTY.md
