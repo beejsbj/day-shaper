@@ -1,2 +1,3 @@
 .vercel/
 scrapped-variants.tar.gz
+node_modules/

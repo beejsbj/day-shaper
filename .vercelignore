@@ -1,1 +1,5 @@
 scrapped-variants.tar.gz
+test/
+.github/
+.claude/
+node_modules/
