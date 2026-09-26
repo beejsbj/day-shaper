@@ -615,7 +615,7 @@ await check("old Fahrenheit weather is converted even on an offline reload", asy
 });
 
 // Each viewport gets a fresh renderer, as it would on a separate device.
-for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 1000 }]) {
+for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 414, height: 896 }, { width: 695, height: 900 }, { width: 1440, height: 1000 }]) {
   await check(`weather is centered and controls fit at ${viewport.width}×${viewport.height}`, async (page) => {
     await page.goto(BASE + "?preview&wx=storm&temp=-18");
     const box = await page.locator("#weatherBtn").boundingBox();

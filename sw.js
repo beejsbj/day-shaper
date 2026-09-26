@@ -1,7 +1,7 @@
 /* Offline shell. Network first so a new deploy shows up on the next visit;
    the cache is only the fallback when there is no network. */
 
-const VERSION = "dayshaper-v2.2.2";
+const VERSION = "dayshaper-v2.2.3";
 const SHELL = [
   "./", "index.html", "manifest.webmanifest", "data/geography.json",
   "styles/tokens.css", "styles/app.css", "fonts/inter-var.woff2",

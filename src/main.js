@@ -341,10 +341,10 @@ function draw(date, t, liftValues) {
     const first = !lastWords;
     lastWords = words;
     clearTimeout(swapTimer);
-    if (first || drag || stone || mode === "shape") { $("top").classList.remove("swap"); setText(titleEl, title); setText(subEl, sub); }
+    if (first || drag || stone || mode === "shape") { $("dialWrap").classList.remove("swap"); setText(titleEl, title); setText(subEl, sub); }
     else {
-      $("top").classList.add("swap");
-      swapTimer = setTimeout(() => { setText(titleEl, title); setText(subEl, sub); $("top").classList.remove("swap"); }, 180);
+      $("dialWrap").classList.add("swap");
+      swapTimer = setTimeout(() => { setText(titleEl, title); setText(subEl, sub); $("dialWrap").classList.remove("swap"); }, 180);
     }
   }
 
