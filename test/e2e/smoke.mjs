@@ -29,8 +29,8 @@ const BASE = `http://localhost:${server.address().port}/`;
 
 const browser = await pw.chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const results = [];
-async function check(name, fn, viewport = { width: 390, height: 844 }) {
-  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+async function check(name, fn, contextOptions = {}) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, ...contextOptions });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -635,7 +635,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }
     assert.ok(weather.x + weather.width + 6 <= done.x, "weather clears Done");
     const tray = await page.locator("#tray").boundingBox();
     assert.ok(tray.y + tray.height <= viewport.height, "shaping controls fit");
-  }, viewport);
+  }, { viewport });
 }
 
 await check("sunrise and sunset sit on the dial and follow its rotation", async (page) => {
@@ -677,6 +677,7 @@ await check("a very short winter day keeps both solar captions and symbols disti
   await page.goto(BASE + "?at=12:00&wx=clear");
   for (const shape of [false, true]) {
     if (shape) await openShape(page);
+    await page.waitForFunction(() => document.querySelector(".solar-label").textContent.includes("Sunrise"));
     const boxes = await page.locator(".solar-label").evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().toJSON()));
     assert.equal(boxes.length, 2);
     const [a, b] = boxes;
@@ -686,7 +687,7 @@ await check("a very short winter day keeps both solar captions and symbols disti
     const symbols = await page.locator(".solar-badge").evaluateAll((nodes) => nodes.map((n) => ({ x: +n.getAttribute("cx"), y: +n.getAttribute("cy") })));
     assert.ok(Math.hypot(symbols[0].x - symbols[1].x, symbols[0].y - symbols[1].y) > 16, "symbols do not overlap");
   }
-});
+}, { timezoneId: "Europe/Oslo" });
 
 for (const season of [{ date: "2026-06-21T12:00:00", label: "Midnight sun" }, { date: "2026-12-21T12:00:00", label: "Polar night" }]) {
   await check(`the dial shows ${season.label.toLowerCase()} without fictitious crossings`, async (page) => {
