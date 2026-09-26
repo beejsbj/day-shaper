@@ -29,8 +29,8 @@ const BASE = `http://localhost:${server.address().port}/`;
 
 const browser = await pw.chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const results = [];
-async function check(name, fn) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+async function check(name, fn, viewport = { width: 390, height: 844 }) {
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -614,9 +614,9 @@ await check("old Fahrenheit weather is converted even on an offline reload", asy
   await page.waitForFunction(() => document.querySelector("#weatherText").textContent === "20°C · Clear");
 });
 
-await check("weather is centered and fits above the dial on small and large screens", async (page) => {
-  for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 1000 }]) {
-    await page.setViewportSize(viewport);
+// Each viewport gets a fresh renderer, as it would on a separate device.
+for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 1000 }]) {
+  await check(`weather is centered and controls fit at ${viewport.width}×${viewport.height}`, async (page) => {
     await page.goto(BASE + "?preview&wx=storm&temp=-18");
     const box = await page.locator("#weatherBtn").boundingBox();
     const title = await page.locator("#title").boundingBox();
@@ -627,8 +627,8 @@ await check("weather is centered and fits above the dial on small and large scre
     assert.equal(await page.locator("#weatherBtn").isVisible(), true);
     const tray = await page.locator("#tray").boundingBox();
     assert.ok(tray.y + tray.height <= viewport.height, "shaping controls fit");
-  }
-});
+  }, viewport);
+}
 
 await check("the moon wears tonight's phase", async (page) => {
   await page.clock.install({ time: new Date("2026-09-26T22:00:00") }); // full moon
