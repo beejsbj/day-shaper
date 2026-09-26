@@ -28,10 +28,12 @@
 <div id="scene" aria-hidden="true">
   <div class="sky"></div>
   <div class="stars"></div>
-  <div class="moon"></div>
+  <svg class="moon" viewBox="0 0 40 40"><circle class="moon-dark" cx="20" cy="20" r="16"/><path class="moon-lit" d=""/></svg>
   <div class="hsun"></div>
   <svg class="ridges" preserveAspectRatio="none"></svg>
   <div class="clouds"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="rain"></div>
+  <div class="snow"></div>
 </div>
 
 <main id="app">
@@ -52,9 +54,11 @@
     <div id="toast" class="off" role="status"><span id="toastText"></span><button id="toastUndo" type="button">Undo</button></div>
     <div id="livePanel" class="panel">
       <ul id="readings" aria-label="Today"></ul>
+      <p id="status" class="pill quiet" hidden></p>
       <div class="row">
-        <p id="status" class="pill quiet" hidden></p>
+        <span class="row-side" aria-hidden="true"></span>
         <button id="shapeBtn" class="pill" type="button"></button>
+        <span class="row-side end"><button id="nowTopBtn" class="round" type="button" aria-pressed="false" aria-label="Now on top"></button></span>
       </div>
     </div>
     <div id="shapePanel" class="panel off" inert>
@@ -81,9 +85,8 @@
       <button type="button" class="item" data-act="share"><span class="ic" data-i="share"></span><span class="lbl">Share this day<small>A link that opens your day as it is</small></span></button>
     </div>
     <div class="group">
-      <button type="button" class="item" data-act="nowtop" role="switch" aria-checked="false"><span class="ic" data-i="top"></span><span class="lbl">Now on top<small>Turn the dial so the present sits at noon</small></span><span class="switch"></span></button>
       <button type="button" class="item" data-act="hour12" role="switch" aria-checked="false"><span class="ic" data-i="clock"></span><span class="lbl">24-hour clock</span><span class="switch"></span></button>
-      <button type="button" class="item" data-act="locate"><span class="ic" data-i="pin"></span><span class="lbl">True sunrise<small id="locNote"></small></span></button>
+      <button type="button" class="item" data-act="locate"><span class="ic" data-i="pin"></span><span class="lbl"><span id="whereLine">Where you are</span><small id="locNote"></small></span></button>
     </div>
     <div class="group">
       <button type="button" class="item" data-act="sample"><span class="ic" data-i="reset"></span><span class="lbl">Start from a sample day</span></button>
@@ -91,6 +94,20 @@
       <a class="item" href="design-system/"><span class="ic" data-i="palette"></span><span class="lbl">Design system</span></a>
     </div>
     <button class="pill close" value="close">Close</button>
+  </form>
+</dialog>
+
+<dialog id="nameDlg" aria-labelledby="nameTitle">
+  <form method="dialog" class="sheet name-sheet">
+    <div class="grab" aria-hidden="true"></div>
+    <h2 id="nameTitle">Name this block</h2>
+    <p class="sheet-sub" id="nameSub"></p>
+    <input id="nameInput" type="text" maxlength="24" autocomplete="off" enterkeyhint="done" spellcheck="false">
+    <div id="nameIdeas" class="ideas"></div>
+    <div class="sheet-actions">
+      <button type="button" class="pill" id="nameClear">Use the clay's name</button>
+      <button type="submit" class="pill strong" id="nameSave" value="save">Save</button>
+    </div>
   </form>
 </dialog>
 

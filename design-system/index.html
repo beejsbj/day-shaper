@@ -30,7 +30,7 @@
   .principle span { font-size: 13.5px; opacity: .8; }
 
   /* the living mood board */
-  .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 900px; }
   .frame { position: relative; aspect-ratio: 390 / 844; border-radius: 26px; overflow: hidden; background: #d6e2ee;
     box-shadow: 0 24px 50px -28px rgba(40, 60, 110, .45); }
   .frame iframe { position: absolute; left: 0; top: 0; width: 390px; height: 844px; border: 0; transform-origin: 0 0; pointer-events: none; }
@@ -111,7 +111,7 @@
   </section>
 
   <section>
-    <h2>A day in eight moments</h2>
+    <h2>A day in nine moments</h2>
     <p class="note">The mood board, live: each frame is the real app, frozen at a time with <code>?preview&amp;at=HH:MM</code>.
     The sun is fixed (sunrise 6:06, sunset 6:21) so the frames are repeatable.</p>
     <div class="board" id="board"></div>
@@ -161,14 +161,16 @@
   <section>
     <h2>Laws</h2>
     <div class="laws">
-      <p><b>No forms.</b> Every edit is touch on clay (or arrows on a focused block). There is nothing to type.</p>
+      <p><b>Almost no forms.</b> Every edit is touch on clay (or arrows on a focused block). The one thing you ever type is a block's name.</p>
       <p><b>The day is a ring.</b> Blocks may cross midnight; sleep from 11:30 PM to 7:00 AM is one block.</p>
-      <p><b>Blocks never pass through each other.</b> They push, and spring back when the hand retreats.</p>
+      <p><b>Blocks never pass through each other on the ring.</b> They push, and spring back when the hand retreats. To reorder, lift one off the ring: in the hand it is a stone again.</p>
       <p><b>Free time is never drawn.</b> It is the dotted track showing through.</p>
       <p><b>Everything can be undone.</b> Every change offers Undo; the history holds sixty steps.</p>
       <p><b>The sky is never static</b> and never a pie chart. It is the one moment you are in.</p>
       <p><b>Text reads on its sky.</b> 3:1 at least, for every moment and every minute between them (tested).</p>
       <p><b>Nothing shouts.</b> No hard shadows, no borders darker than the glass, no bold weights above 650.</p>
+      <p><b>Five clays, any names.</b> The palette stays five materials so the screen stays calm; what you call a block is yours.</p>
+      <p><b>The sky is the real one.</b> The sun from your latitude, tonight's moon in its true phase, and weather only from where you actually are — never guessed.</p>
     </div>
   </section>
 
@@ -190,6 +192,7 @@
     ["22:30", "", "Time to wind down"],
     ["23:55", "", "Good night · sleep mode"],
     ["04:45", "&day=s86.28w36.14e51.3m70.4", "Almost there · before dawn"],
+    ["15:10", "&day=s94.30w36.14&wx=rain&temp=12", "Rainy afternoon"],
   ];
   const b = document.getElementById("board");
   b.innerHTML = board.map(([t, q, cap]) =>

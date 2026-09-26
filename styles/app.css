@@ -5,7 +5,7 @@
 html {
   height: 100%;
   background: var(--sky-bot);
-  transition-property: --sky-top, --sky-mid, --sky-bot, --ridge-0, --ridge-1, --ridge-2, --haze, --ink, --ink-low, --stars, --clouds, --moon;
+  transition-property: --sky-top, --sky-mid, --sky-bot, --ridge-0, --ridge-1, --ridge-2, --haze, --ink, --ink-low, --stars, --clouds, --moon, --rain, --snow;
   transition-duration: var(--t-sky);
   transition-timing-function: linear;
 }
@@ -28,10 +28,36 @@ button, a { font: inherit; color: inherit; background: none; border: 0; cursor: 
 #scene .sky { position: absolute; inset: 0; background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 52%, var(--sky-bot) 100%); }
 .stars { position: absolute; left: 0; top: 0; width: 1px; height: 1px; border-radius: 50%; opacity: var(--stars); }
 .moon {
-  position: absolute; right: 13%; top: calc(11% + env(safe-area-inset-top)); width: 34px; height: 34px; border-radius: 50%;
-  box-shadow: inset 9px -4px 0 0 var(--moonlight); transform: rotate(-18deg); opacity: var(--moon);
-  filter: drop-shadow(0 0 12px rgba(244, 211, 140, 0.35));
+  position: absolute; right: 12%; top: calc(10% + env(safe-area-inset-top)); width: 40px; height: 40px; overflow: visible;
+  opacity: var(--moon); transform: rotate(var(--moon-tilt, -18deg));
+  filter: drop-shadow(0 0 12px rgba(244, 211, 140, 0.4));
 }
+.moon-dark { fill: var(--moonlight); opacity: 0.1; }
+.moon-lit { fill: var(--moonlight); }
+.rain, .snow { position: absolute; inset: -10% 0 0; pointer-events: none; }
+.rain { opacity: var(--rain); }
+.snow { opacity: var(--snow); }
+.rain::before, .rain::after, .snow::before, .snow::after { content: ""; position: absolute; inset: 0; background-repeat: repeat; }
+.rain::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='160'%3E%3Cg stroke='%23fff' stroke-opacity='.55' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12 8l-3 14M58 40l-3 14M96 18l-3 14M30 92l-3 14M78 110l-3 14M110 76l-3 14M48 140l-3 14'/%3E%3C/g%3E%3C/svg%3E");
+  animation: fall-rain 0.55s linear infinite;
+}
+.rain::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='130'%3E%3Cg stroke='%23fff' stroke-opacity='.3' stroke-width='.8' stroke-linecap='round'%3E%3Cpath d='M20 20l-2 9M66 60l-2 9M40 100l-2 9M84 6l-2 9'/%3E%3C/g%3E%3C/svg%3E");
+  animation: fall-rain-far 0.9s linear infinite;
+}
+.snow::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cg fill='%23fff' fill-opacity='.8'%3E%3Ccircle cx='14' cy='20' r='2'/%3E%3Ccircle cx='70' cy='52' r='1.6'/%3E%3Ccircle cx='112' cy='14' r='2.2'/%3E%3Ccircle cx='40' cy='104' r='1.8'/%3E%3Ccircle cx='98' cy='120' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+  animation: fall-snow 9s linear infinite;
+}
+.snow::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cg fill='%23fff' fill-opacity='.45'%3E%3Ccircle cx='30' cy='30' r='1.1'/%3E%3Ccircle cx='80' cy='70' r='1'/%3E%3C/g%3E%3C/svg%3E");
+  animation: fall-snow-far 14s linear infinite;
+}
+@keyframes fall-rain { to { background-position: -34px 160px; } }
+@keyframes fall-rain-far { to { background-position: -19px 130px; } }
+@keyframes fall-snow { to { background-position: 30px 140px; } }
+@keyframes fall-snow-far { to { background-position: -20px 100px; } }
 .hsun {
   position: absolute; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; opacity: 0;
   background: radial-gradient(circle at 42% 38%, #fff6dc, #f8d58f 55%, #f3bb70);
@@ -111,9 +137,15 @@ button.pill:active { transform: scale(0.95); }
 #dial .blk:focus-visible > path:first-of-type { stroke: var(--ink); }
 #dial .handle { stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-opacity: 0.95; filter: drop-shadow(0 1px 2px rgba(20, 30, 60, 0.3)); }
 #dial .handle.on { stroke-width: 4.5; }
-#dial .now-dot { fill: #fffdf6; stroke: rgba(40, 50, 90, 0.18); stroke-width: 0.8; }
-#dial .now-halo { fill: var(--sun); fill-opacity: 0.38; }
+#dial .now-dot { fill: var(--sun); stroke: #fffdf6; stroke-width: 1.8; filter: drop-shadow(0 1px 3px rgba(60, 50, 20, 0.35)); }
+#dial .now-halo { fill: var(--sun); fill-opacity: 0.32; }
+#dial .now-pulse { fill: none; stroke: var(--sun); stroke-width: 1.4; transform-box: fill-box; transform-origin: center; animation: now-pulse 3.2s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
+#dial .now-hand { stroke: var(--ink); stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 0 4.2; }
+html.dark #dial .now-dot { fill: #fffdf6; stroke: var(--sun); }
 html.dark #dial .now-halo { fill: #fff; fill-opacity: 0.2; }
+html.dark #dial .now-pulse { stroke: #fff; }
+@keyframes now-pulse { 0% { transform: scale(1); opacity: 0.75; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
+#dial .leaving { pointer-events: none; }
 #dial .orb { filter: drop-shadow(0 18px 26px var(--shadow)); }
 #dial .sat { filter: drop-shadow(0 8px 12px var(--shadow)); }
 #dText { pointer-events: none; }
@@ -141,8 +173,15 @@ html.dark #dial .now-halo { fill: #fff; fill-opacity: 0.2; }
 #readings .i { width: 22px; height: 22px; opacity: 0.85; margin-bottom: 7px; }
 #readings .l { font-size: 12px; opacity: 0.78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 #readings .v { font-size: 14px; font-weight: 450; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.row { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; }
+.row-side.end { justify-self: end; }
+#status { display: flex; width: fit-content; margin: -4px auto 12px; height: 36px; padding: 0 16px; font-size: 13px; animation: rise-in 0.5s var(--glide) both; }
 #status[hidden] { display: none; }
+#nowTopBtn { color: var(--ink-low); transition: transform var(--t-touch) var(--spring), background 0.3s, color 0.3s; }
+#nowTopBtn .i { transition: transform 0.5s var(--spring); }
+#nowTopBtn[aria-pressed="true"] { background: var(--pill-strong); color: var(--ink); }
+#nowTopBtn[aria-pressed="true"] .i { transform: rotate(360deg); }
+#nowTopBtn:active .i { transform: scale(0.85); }
 #shapeBtn.invite { animation: invite 2.8s ease-in-out 1.2s 3; }
 @keyframes invite { 0%, 100% { transform: none; } 50% { transform: translateY(-4px); box-shadow: 0 16px 28px -14px var(--shadow); } }
 
@@ -159,6 +198,15 @@ html.dark #dial .now-halo { fill: #fff; fill-opacity: 0.2; }
 .stone .nm { font-size: 11.5px; font-weight: 450; color: var(--ink-low); }
 .stone:active .ball { transform: scale(0.92); }
 .stone.lifting .ball { opacity: 0.3; transform: scale(0.84); }
+.stone.pop .ball { animation: pop 0.42s var(--spring); }
+@keyframes pop { 40% { transform: scale(1.14) translateY(-4px); } }
+#shapePanel:not(.off) .stone { animation: rise-in 0.5s var(--glide) both; animation-delay: calc(var(--i, 0) * 45ms + 60ms); }
+#livePanel:not(.off) #readings li { animation: rise-in 0.55s var(--glide) both; animation-delay: calc(var(--i, 0) * 40ms); }
+#readings li.fresh .v { animation: settle 0.45s var(--glide); }
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes settle { from { opacity: 0; transform: translateY(4px); } }
+#doneBtn:not([hidden]), #menuBtn:not([hidden]) { animation: pop-in 0.38s var(--spring); }
+@keyframes pop-in { from { opacity: 0; transform: scale(0.82); } }
 .stone:focus-visible { outline: none; }
 .stone:focus-visible .ball { outline: 2px solid var(--ink); outline-offset: 3px; }
 
@@ -188,6 +236,8 @@ html.dark #dial .now-halo { fill: #fff; fill-opacity: 0.2; }
 }
 #ghost.on { display: grid; }
 #ghost.over { transform: scale(0.42); opacity: 0.55; }
+#ghost.carry { width: 64px; height: 64px; margin: -32px 0 0 -32px; animation: pop-in 0.3s var(--spring); }
+#ghost .gname { position: absolute; top: 100%; margin-top: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
 #ghost .i { width: 26px; height: 26px; }
 
 /* ---------- menu sheet ---------- */
@@ -220,6 +270,21 @@ dialog[open] .sheet { animation: rise 0.42s var(--glide); }
 .item[aria-checked="true"] .switch { background: var(--sun); }
 .item[aria-checked="true"] .switch::after { transform: translateX(18px); }
 .sheet .close { display: flex; margin: 16px auto 0; color: var(--ink); }
+dialog#nameDlg { margin: auto auto 0; width: 100%; max-width: 560px; border: 0; padding: 0; background: transparent; color: var(--ink); overflow: visible; }
+dialog#nameDlg::backdrop { background: rgba(8, 14, 38, 0.3); }
+.name-sheet #nameInput {
+  display: block; width: 100%; margin: 16px 0 12px; height: 52px; padding: 0 18px; border-radius: 16px;
+  border: 1px solid var(--pill-line); background: color-mix(in oklab, var(--pill-strong) 70%, transparent);
+  color: var(--ink); font: inherit; font-size: 18px; font-weight: 400; outline: none; user-select: text; -webkit-user-select: text;
+}
+.name-sheet #nameInput:focus { border-color: color-mix(in oklab, var(--ink) 45%, transparent); }
+.ideas { display: flex; flex-wrap: wrap; gap: 8px; }
+.ideas button { height: 34px; padding: 0 14px; border-radius: var(--r-pill); font-size: 13px; background: color-mix(in oklab, var(--pill-strong) 60%, transparent); border: 1px solid var(--pill-line); transition: transform var(--t-touch) var(--spring); }
+.ideas button:active { transform: scale(0.94); }
+.sheet-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; }
+.sheet-actions .pill { color: var(--ink); }
+.pill.strong { background: var(--ink); color: var(--sky-top); border-color: transparent; font-weight: 550; }
+dialog[open] .name-sheet { animation: rise 0.42s var(--glide); }
 
 /* ---------- edges ---------- */
 #rotate { position: fixed; inset: 0; z-index: 100; display: none; place-items: center; text-align: center; padding: 30px; background: var(--sky-mid); color: var(--ink); font-size: 17px; font-weight: 340; }
@@ -266,3 +331,5 @@ dialog[open] .sheet { animation: rise 0.42s var(--glide); }
   *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
   html { transition: none; }
 }
+.sheet-actions [hidden] { display: none; }
+.sheet-actions #nameSave { margin-left: auto; }

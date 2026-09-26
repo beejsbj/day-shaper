@@ -27,7 +27,7 @@ export function loadBlocks() {
 }
 
 export function saveBlocks(blocks) {
-  return write(K.blocks, blocks.map(({ id, type, start, len }) => ({ id, type, start, len })));
+  return write(K.blocks, blocks.map(({ id, type, start, len, name }) => (name ? { id, type, start, len, name } : { id, type, start, len })));
 }
 
 const DEFAULT_PREFS = { hour12: null, nowOnTop: false, loc: null, shapedOnce: false };
@@ -65,17 +65,30 @@ export function createHistory(limit = 60) {
 const CODE = { sleep: "s", work: "w", eat: "e", move: "m", rest: "r" };
 const DECODE = Object.fromEntries(Object.entries(CODE).map(([k, v]) => [v, k]));
 
+const EMPTY = "0"; // a day cleared on purpose, as opposed to a missing or broken code
+const TOKEN = "([swemr])(\\d{1,2})\\.(\\d{1,2})(?:~([^~]{1,24})~)?";
+
 export function encodeDay(blocks) {
-  return blocks.map((b) => CODE[b.type] + Math.round(b.start * 4) + "." + Math.round(b.len * 4)).join("");
+  if (!blocks.length) return EMPTY;
+  return blocks.map((b) => CODE[b.type] + Math.round(b.start * 4) + "." + Math.round(b.len * 4)
+    + (b.name ? "~" + cleanName(b.name).replace(/~/g, "") + "~" : "")).join("");
 }
+/** A whole code or nothing: a truncated or garbled link must never replace a day with part of one. */
 export function decodeDay(str) {
-  if (typeof str !== "string" || str.length > 400) return null;
+  if (typeof str !== "string" || !str || str.length > 1200) return null;
+  if (str === EMPTY) return [];
+  if (!new RegExp(`^(?:${TOKEN})+$`).test(str)) return null;
   const out = [];
-  const re = /([swemr])(\d{1,2})\.(\d{1,2})/g;
+  const re = new RegExp(TOKEN, "g");
   let m;
-  while ((m = re.exec(str))) out.push({ type: DECODE[m[1]], start: +m[2] / 4, len: +m[3] / 4 });
-  const day = out.length ? sanitizeBlocks(out, TYPE_IDS) : null;
-  return day && day.length ? day : null; // a link that decodes to nothing must never wipe a day
+  while ((m = re.exec(str))) out.push({ type: DECODE[m[1]], start: +m[2] / 4, len: +m[3] / 4, name: m[4] });
+  const day = sanitizeBlocks(out, TYPE_IDS);
+  return day && day.length === out.length ? day : null;
+}
+
+/** Names are a word or two you gave a block ("Study", "School run"). */
+export function cleanName(v) {
+  return typeof v === "string" ? v.replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 24) : "";
 }
 
 /** False in private modes and locked-down browsers where nothing will persist. */

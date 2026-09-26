@@ -90,7 +90,7 @@ export function createDial(svg) {
 
   const layer = (id) => el("g", { id }, svg);
   const gGlow = layer("dGlow"), gTrack = layer("dTrack"), gMarks = layer("dMarks"), gGhost = layer("dGhost");
-  const gClay = layer("dClay"), gVeil = layer("dVeil"), gHandles = layer("dHandles"), gNow = layer("dNow");
+  const gClay = layer("dClay"), gLeave = layer("dLeave"), gVeil = layer("dVeil"), gHandles = layer("dHandles"), gNow = layer("dNow");
   const gOrb = layer("dOrb"), gText = layer("dText");
 
   const glow = el("circle", { cx: C, cy: C, fill: "url(#orbGlow)" }, gGlow);
@@ -114,6 +114,8 @@ export function createDial(svg) {
   const tSuffix = el("text", { class: "o-suffix", "text-anchor": "middle", "dominant-baseline": "central" }, gText);
   const tSmall = el("text", { class: "o-small", "text-anchor": "middle", "dominant-baseline": "central" }, gText);
 
+  const nowHand = el("path", { class: "now-hand", fill: "none" }, gNow);
+  const nowPulse = el("circle", { class: "now-pulse" }, gNow);
   const nowHalo = el("circle", { class: "now-halo" }, gNow);
   const nowDot = el("circle", { class: "now-dot" }, gNow);
 
@@ -131,7 +133,7 @@ export function createDial(svg) {
       const dot = el("circle", { r: 2, class: "blk-dot" }, g);
       g.addEventListener("focus", () => focusHandler && focusHandler(b.id));
       g.addEventListener("keydown", (ev) => keyHandler && keyHandler(ev, g.dataset.id));
-      e = { g, body, hi, ic, name, dot, type: null };
+      e = { g, body, hi, ic, name, dot, type: null, born: ready ? bornAt : -Infinity };
       blockEls.set(b.id, e);
       gClay.appendChild(g);
     }
@@ -139,8 +141,13 @@ export function createDial(svg) {
   }
 
   /* ---------- render ---------- */
+  let ready = false, bornAt = 0; // blocks that appear after the first paint grow in
+  const GROW = 0.38;
+  /** Returns true while something is still animating inside the dial. */
   function render(vm) {
     rot = vm.rot;
+    bornAt = vm.time;
+    let busy = false;
     const m = vm.m, me = ease(m);
     const w = lerp(LIVE.w, SHAPE.w, me);
     const r0 = R - w / 2, r1 = R + w / 2;
@@ -193,11 +200,15 @@ export function createDial(svg) {
       const lift = vm.lifts.get(b.id) || 0;
       const isActive = b.id === vm.activeId, isSel = b.id === vm.selectedId;
       const out = r1 + lift * 7 * me, inn = r0 - Math.max(0, lift) * 1.5 * me;
-      const t0 = b.start + gapA, t1 = b.start + b.len - gapA;
+      // a new block grows out from its middle
+      const grown = vm.reduced ? 1 : ease(Math.min(1, Math.max(0, (vm.time - e.born) / GROW)));
+      if (grown < 1) busy = true;
+      const half = (b.len / 2 - gapA) * (0.2 + 0.8 * grown), midT = b.start + b.len / 2;
+      const t0 = midT - half, t1 = midT + half;
       if (e.type !== b.type) { e.ic.setAttribute("href", "#i-" + ty.icon); e.type = b.type; }
       set(e.body, { d: sector(t0, t1, inn, out, lerp(3, 10, me)), fill: `url(#clay-${b.type})` });
       set(e.hi, { d: sector(t0, t1, out - lerp(1.2, 3.4, me), out - 0.6, lerp(0.6, 3, me)), opacity: f(0.1 + me * 0.3) });
-      let op = 1;
+      let op = grown < 1 ? 0.3 + 0.7 * grown : 1;
       if (vm.previewId === b.id) op = 0.82;
       if (isActive && vm.armDelete) op = 0.35;
       e.g.setAttribute("opacity", op);
@@ -209,18 +220,32 @@ export function createDial(svg) {
       const showIcon = b.len >= 0.7, showName = b.len >= 1.75;
       set(e.ic, { x: f(lx - 8.5), y: f(ly - 8.5 - (showName ? 5 : 0)), opacity: showIcon ? f(me) : 0 });
       set(e.name, { x: f(lx), y: f(ly + 9), opacity: showName ? f(me * 0.95) : 0 });
-      e.name.textContent = showName ? ty.name.toUpperCase() : "";
+      e.name.textContent = showName ? fitName(b.name || ty.name, b.len) : "";
       set(e.dot, { cx: f(lx), cy: f(ly), opacity: !showIcon ? f(me * 0.8) : 0 });
 
       // a slider whose value is the start time: screen readers pass the arrow keys straight through
       if (vm.interactive) {
-        set(e.g, { tabindex: "0", role: "slider", "aria-label": ty.name, "aria-valuemin": "0", "aria-valuemax": "1439",
+        set(e.g, { tabindex: "0", role: "slider", "aria-label": b.name || ty.name, "aria-valuemin": "0", "aria-valuemax": "1439",
           "aria-valuenow": String(Math.round(b.start * 60) % 1440), "aria-valuetext": vm.labelFor(b) });
       } else {
         for (const a of ["tabindex", "role", "aria-label", "aria-valuemin", "aria-valuemax", "aria-valuenow", "aria-valuetext"]) e.g.removeAttribute(a);
       }
     }
     for (const [id, e] of blockEls) if (!seen.has(id)) { e.g.remove(); blockEls.delete(id); }
+    ready = true;
+
+    // blocks being let go: drawn into the orb, thinning as they go
+    clear(gLeave);
+    let gulp = 0;
+    for (const { b, u } of vm.leaving || []) {
+      const k = ease(Math.min(1, u));
+      const rMid = lerp(R, orbR * 0.55, k), th = lerp(w, 2, k);
+      const half = (b.len / 2) * (1 - 0.8 * k), midT = b.start + b.len / 2;
+      el("path", { d: sector(midT - half, midT + half, rMid - th / 2, rMid + th / 2, lerp(10, 1, k) * me + 2),
+        fill: `url(#clay-${b.type})`, opacity: f((1 - k) * (b.fromOp ?? 1)), class: "leaving" }, gLeave);
+      gulp = Math.max(gulp, Math.sin(Math.min(1, u) * Math.PI));
+      if (u < 1) busy = true;
+    }
     // paint order: lifted on top. Only touch the DOM when it actually changed (moving a node drops focus).
     const want = order.map((b) => blockEls.get(b.id).g);
     const have = [...gClay.children];
@@ -242,11 +267,14 @@ export function createDial(svg) {
       }
     }
 
-    // now
+    // now: a sun-gold bead on the ring with a slow pulse and a dotted hand to the orb (life);
+    // a small bead outside the clay while shaping
     const nr = lerp(R, r1 + 9, me);
     const [nx, ny] = at(ang(vm.t), nr);
-    set(nowDot, { cx: f(nx), cy: f(ny), r: f(lerp(4.6, 3.2, me)) });
-    set(nowHalo, { cx: f(nx), cy: f(ny), r: f(lerp(10, 6, me)) });
+    set(nowDot, { cx: f(nx), cy: f(ny), r: f(lerp(6.2, 3.4, me)) });
+    set(nowHalo, { cx: f(nx), cy: f(ny), r: f(lerp(12, 6, me)) });
+    set(nowPulse, { cx: f(nx), cy: f(ny), r: 7, opacity: vm.reduced ? 0 : f(1 - me) });
+    set(nowHand, { d: `M${P(ang(vm.t), orbR + 9)}L${P(ang(vm.t), R - 10)}`, opacity: f(0.42 * (1 - me)) });
 
     // orb
     const o = vm.orb, mat = o.material;
@@ -254,9 +282,10 @@ export function createDial(svg) {
     set(glowStops[0], { "stop-color": mat.glow, "stop-opacity": f(mat.glowA) });
     set(glowStops[1], { "stop-color": mat.glow, "stop-opacity": f(mat.glowA * 0.35) });
     set(glowStops[2], { "stop-color": mat.glow, "stop-opacity": 0 });
-    set(glow, { r: f(orbR * 1.42) });
-    last = { orbR, blob: o.blob, satOp: (1 - me) * o.satellites, reduced: vm.reduced };
-    const d = blob(orbR, o.blob, vm.time);
+    const orbDraw = orbR * (1 + 0.05 * gulp); // the orb swallows what you let go
+    set(glow, { r: f(orbDraw * 1.42) });
+    last = { orbR: orbDraw, blob: o.blob, satOp: (1 - me) * o.satellites, reduced: vm.reduced };
+    const d = blob(orbDraw, o.blob, vm.time);
     set(orbBody, { d });
     set(orbRim, { d, stroke: mat.rim, "stroke-opacity": f(mat.rimA), "stroke-width": 1.2 });
     // companions: a small warm one on the left, a larger porcelain one low on the right (navy by night)
@@ -283,6 +312,14 @@ export function createDial(svg) {
     set(tSuffix, { x: C, y: f(C + orbR * 0.33), "font-size": f(orbR * 0.13) });
     set(tSmall, { x: C, y: f(C + orbR * (hasLabel || inline ? 0.38 : o.suffix ? 0.56 : 0.4)), "font-size": f(lerp(12, 10.5, me)) });
     gText.classList.toggle("danger", o.tone === "danger");
+    return busy;
+  }
+
+  /** A name, upper-cased and shortened to what the block's arc can hold. */
+  function fitName(name, len) {
+    const room = Math.max(3, Math.floor((len * ((TAU * R) / 24) * 0.78) / 6.2));
+    const up = name.toUpperCase();
+    return up.length <= room ? up : up.slice(0, room - 1).trimEnd() + "…";
   }
 
   /* satellites drift a little around the orb */

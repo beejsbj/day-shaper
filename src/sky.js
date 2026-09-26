@@ -3,7 +3,7 @@
    ink, and the orb's material — and the sky at any minute is an OKLab blend of
    the two moments either side of it. One screen is always one moment. */
 
-import { mixDeep, contrast } from "./color.js";
+import { mixDeep, contrast, mix, luminance } from "./color.js";
 import { mod24, wrapDelta } from "./engine.js";
 
 /* orb: hi/mid/lo = sphere shading, rim = edge light, glow = halo, ink = text on the orb.
@@ -103,14 +103,43 @@ export function skyAt(t, sun) {
   const A = MOMENTS[a.key], B = MOMENTS[b.key];
   const sky = mixDeep(A, B, u);
   /* Ink is chosen, never blended: white fading toward slate passes through a
-     grey that vanishes on a mid-tone dawn. Take whichever end reads better
-     on the colour actually behind it. */
-  const pick = (x, y, bg) => (contrast(x, bg) >= contrast(y, bg) ? x : y);
-  sky.ink = pick(A.ink, B.ink, sky.top);
-  sky.inkLow = pick(A.inkLow, B.inkLow, sky.ridge[1]);
-  sky.orb.ink = pick(A.orb.ink, B.orb.ink, sky.orb.mid);
+     grey that vanishes on a mid-tone dawn. Take whichever end reads better on
+     the colour actually behind it, then deepen or brighten it until it clears
+     3:1 there — the blend between two moments can be harder than either. */
+  inkUp(sky, A, B);
   sky.from = a.key; sky.to = b.key; sky.u = u;
   return sky;
+}
+
+/** Where the words sit: the top of the sky, down to a third of the way to the middle. */
+const headerBgs = (sky) => [sky.top, mix(sky.top, sky.mid, 0.35)];
+
+/** Re-choose every ink on `sky` so it reads at ≥3:1. A and B are candidate sources (moments). */
+export function inkUp(sky, A = sky, B = sky) {
+  sky.ink = legible(pick(A.ink, B.ink, headerBgs(sky)), headerBgs(sky));
+  sky.inkLow = legible(pick(A.inkLow, B.inkLow, [sky.ridge[1]]), [sky.ridge[1]]);
+  sky.orb.ink = legible(pick(A.orb.ink, B.orb.ink, [sky.orb.mid]), [sky.orb.mid]);
+  return sky;
+}
+
+const worst = (ink, bgs) => Math.min(...bgs.map((bg) => contrast(ink, bg)));
+const pick = (x, y, bgs) => (worst(x, bgs) >= worst(y, bgs) ? x : y);
+const DEEP = "#141b36", PALE = "#ffffff";
+
+/** Push `ink` away from its background, keeping its hue, until it clears `min`. */
+export function legible(ink, bgs, min = 3) {
+  if (worst(ink, bgs) >= min) return ink;
+  const bgLum = bgs.reduce((s, bg) => s + luminance(bg), 0) / bgs.length;
+  const toward = luminance(ink) >= bgLum ? [PALE, DEEP] : [DEEP, PALE];
+  let best = ink;
+  for (const end of toward) {
+    for (let k = 0.1; k <= 1.0001; k += 0.1) {
+      const c = mix(ink, end, k);
+      if (worst(c, bgs) >= min) return c;
+      if (worst(c, bgs) > worst(best, bgs)) best = c;
+    }
+  }
+  return best;
 }
 
 /** Named phase for words, not colours. */
@@ -118,11 +147,18 @@ export function phaseAt(t, sun) {
   if (sun.polar === "day") return "day";
   if (sun.polar === "night") return "night";
   const dSr = wrapDelta(t - sun.sunrise), dSs = wrapDelta(t - sun.sunset);
-  if (dSs >= -0.1 && dSs < 0.75) return "dusk";
-  if (dSs >= -1.25 && dSs < -0.1) return "golden";
-  if (dSr >= -0.4 && dSr < 0.75) return "dawn";
-  if (dSr >= -2.5 && dSr < -0.4) return "predawn";
+  // on short days the windows overlap: the nearer horizon crossing has the say
+  const rising = sunSide(t, sun) === "rise";
+  const evening = () => (dSs >= -0.1 && dSs < 0.75 ? "dusk" : dSs >= -1.25 && dSs < -0.1 ? "golden" : null);
+  const morning = () => (dSr >= -0.4 && dSr < 0.75 ? "dawn" : dSr >= -2.5 && dSr < -0.4 ? "predawn" : null);
+  const named = rising ? morning() || evening() : evening() || morning();
+  if (named) return named;
   return mod24(t - sun.sunrise) < mod24(sun.sunset - sun.sunrise) ? "day" : "night";
+}
+
+/** Which horizon the sun is nearer to at hour t: "rise" or "set". */
+export function sunSide(t, sun) {
+  return Math.abs(wrapDelta(t - sun.sunrise)) <= Math.abs(wrapDelta(t - sun.sunset)) ? "rise" : "set";
 }
 
 /** 0 at the horizon, 1 at solar noon; negative below the horizon. Rough, for placing the sun. */

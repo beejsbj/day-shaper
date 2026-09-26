@@ -32,7 +32,13 @@ function greeting(t) {
  * @returns {{title, subtitle, caption, phase, current, next, sleeping}}
  *   current: {block, left} | null   next: {block, in} | null
  */
-export function describe({ t, date, blocks, sun, hour12 }) {
+const partOfDay = (t) => (t >= 5 && t < 12 ? "morning" : t >= 12 && t < 17 ? "afternoon" : t >= 17 && t < 21.5 ? "evening" : "night");
+const degrees = (wx) => wx.temp + "°";
+
+/** A block's own name if you gave it one, else its clay's. */
+export const blockName = (b) => b.name || typeOf(b.type).name;
+
+export function describe({ t, date, blocks, sun, hour12, wx = null }) {
   const phase = phaseAt(t, sun);
   const i = blockAt(blocks, t);
   const cur = i >= 0 ? blocks[i] : null;
@@ -49,7 +55,7 @@ export function describe({ t, date, blocks, sun, hour12 }) {
       title = night ? "Good night" : "Resting";
       subtitle = night ? "Rest well and recharge." : "Up at " + at(endOf(cur)) + ".";
     } else {
-      title = ty.mood;
+      title = cur.name || ty.mood;
       subtitle = "Until " + at(endOf(cur));
     }
   } else if (next && next.block.type === "sleep" && next.in <= WIND_DOWN) {
@@ -57,8 +63,12 @@ export function describe({ t, date, blocks, sun, hour12 }) {
     subtitle = "Your bedtime is " + at(next.block.start) + ".";
     caption = fmtDur(next.in) + " to bed";
   } else {
-    if (next && next.in <= 2) caption = typeOf(next.block.type).name + " in " + fmtDur(next.in);
-    if (phase === "predawn") {
+    if (next && next.in <= 2) caption = blockName(next.block) + " in " + fmtDur(next.in);
+    if (wx && wx.word && wx.wet && phase !== "predawn") {
+      // the mood board's "Rainy afternoon": weather outranks the light when it is falling
+      title = wx.word + " " + partOfDay(t);
+      subtitle = wx.label + " · " + degrees(wx);
+    } else if (phase === "predawn") {
       title = "Almost there";
       subtitle = "Dawn is " + fmtDur(mod24(sun.sunrise - t)) + " away.";
     } else if (phase === "dawn") {
@@ -73,6 +83,7 @@ export function describe({ t, date, blocks, sun, hour12 }) {
     } else {
       title = greeting(t);
       subtitle = title === "Good night" ? "Rest well and recharge." : fmtDate(date);
+      if (wx) subtitle += " · " + degrees(wx) + " " + wx.label.toLowerCase();
     }
   }
 
@@ -80,11 +91,11 @@ export function describe({ t, date, blocks, sun, hour12 }) {
 }
 
 /** The four quiet readings under the dial (the mood board's weather row). */
-export function readings({ t, blocks, sun, hour12, next }) {
+export function readings({ t, blocks, sun, hour12, next, wx = null }) {
   const at = (h) => fmtTime(h, hour12);
   const out = [];
   out.push(next
-    ? { icon: typeOf(next.block.type).icon, label: typeOf(next.block.type).name, value: at(next.block.start) }
+    ? { icon: typeOf(next.block.type).icon, label: blockName(next.block), value: at(next.block.start) }
     : { icon: "free", label: "Next", value: "—" });
   out.push({ icon: "free", label: "Free", value: fmtDur(freeHours(blocks)) });
   if (sun.polar) {
@@ -95,8 +106,28 @@ export function readings({ t, blocks, sun, hour12, next }) {
       ? { icon: "sunset", label: "Sunset", value: at(sun.sunset) }
       : { icon: "sunrise", label: "Sunrise", value: at(sun.sunrise) });
   }
-  out.push({ icon: "daylight", label: "Daylight", value: fmtDur(dayLength(sun)) });
+  out.push(wx
+    ? { icon: wx.icon, label: wx.label, value: degrees(wx) }
+    : { icon: "daylight", label: "Daylight", value: fmtDur(dayLength(sun)) });
   return out;
+}
+
+/** Where you are, as geography rather than an address. */
+export function geography(loc, elevation = null) {
+  const lat = loc.lat, lon = loc.lon, a = Math.abs(lat);
+  const ns = lat >= 0 ? "north" : "south";
+  const band = a < 10 ? "Equatorial belt"
+    : a < 23.44 ? `Tropics, ${ns}`
+    : a < 35 ? `Subtropics, ${ns}`
+    : a < 55 ? `Temperate ${ns}`
+    : a < 66.56 ? (lat >= 0 ? "Subarctic" : "Subantarctic")
+    : (lat >= 0 ? "Arctic" : "Antarctic");
+  const km = Math.round((a * 40007.86) / 360 / 10) * 10;
+  const coords = `${a.toFixed(2)}° ${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(2)}° ${lon >= 0 ? "E" : "W"}`;
+  const parts = [band];
+  if (elevation != null) parts.push(elevation < 1 ? "at sea level" : Math.round(elevation).toLocaleString("en") + " m above the sea");
+  const fromEquator = km < 10 ? "on the equator" : km.toLocaleString("en") + " km " + ns + " of the equator";
+  return { line: parts.join(" · "), detail: coords + " · " + fromEquator };
 }
 
 export const shapedSummary = (blocks) =>

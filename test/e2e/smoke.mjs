@@ -269,6 +269,174 @@ await check("junk in storage never reaches the screen", async (page) => {
   assert.ok(b.length >= 1 && b.every((x) => Number.isFinite(x.start)));
 });
 
+/* ---- review round 2: the owner's list and Codex's findings ---- */
+
+await check("a tap outside the ring, or on the sky, finishes shaping", async (page) => {
+  await page.goto(BASE + "?preview&at=10:00");
+  await openShape(page);
+  const p = await pt(page, 3, 196); // beyond the ring, inside the dial's square
+  await page.mouse.click(p.x, p.y);
+  await page.waitForTimeout(300);
+  assert.equal((await state(page)).mode, "live", "outside the ring");
+  await openShape(page);
+  await page.mouse.click(40, 140); // the open sky under the header
+  await page.waitForTimeout(300);
+  assert.equal((await state(page)).mode, "live", "on the sky");
+  // a tap in a free gap of the ring only lets go of the selection
+  await openShape(page);
+  const gap = await pt(page, 22.25, 148);
+  await page.mouse.click(gap.x, gap.y);
+  await page.waitForTimeout(200);
+  assert.equal((await state(page)).mode, "shape", "gap on the ring keeps shaping");
+});
+
+await check("now on top is a button beside Shape your day", async (page) => {
+  await page.goto(BASE + "?preview&at=15:00");
+  assert.equal(await page.$('[data-act="nowtop"]'), null, "gone from the menu");
+  const btn = await page.$("#nowTopBtn");
+  const [a, b] = [await btn.boundingBox(), await (await page.$("#shapeBtn")).boundingBox()];
+  assert.ok(a.x > b.x + b.width && Math.abs(a.y + a.height / 2 - (b.y + b.height / 2)) < 4, "to the right, on the same line");
+  await btn.click();
+  assert.equal(await page.evaluate(() => window.__dayshaper.nowOnTop), true);
+  assert.equal(await btn.getAttribute("aria-pressed"), "true");
+  await page.waitForTimeout(900);
+  // the now bead has turned to the top of the dial
+  const dot = await (await page.$("#dial .now-dot")).boundingBox(), dial = await (await page.$("#dial")).boundingBox();
+  assert.ok(Math.abs(dot.x + dot.width / 2 - (dial.x + dial.width / 2)) < 6 && dot.y < dial.y + dial.height * 0.25, "now at the top");
+});
+
+await check("pull a block off the ring and carry it past its neighbours", async (page) => {
+  await page.goto(BASE + "?preview&at=10:00");
+  await openShape(page);
+  const before = (await state(page)).blocks;
+  const rest = at(before, "rest", 20.5);
+  // grab rest (20:30–22:00), lift it off the ring, bring it back at 16:00 — inside the afternoon's work
+  const pts = [await pt(page, 21.25, 148), await pt(page, 21.25, 175), await pt(page, 21.25, 215), await pt(page, 18.5, 215), await pt(page, 16, 205), await pt(page, 16, 150)];
+  await page.mouse.move(pts[0].x, pts[0].y);
+  await page.mouse.down();
+  for (let i = 1; i < pts.length; i++) {
+    await page.mouse.move(pts[i].x, pts[i].y, { steps: 6 });
+    if (i === 2) assert.ok(await page.$eval("#ghost", (g) => g.classList.contains("carry")), "lifted into the hand");
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(120);
+  const after = (await state(page)).blocks;
+  const r = after.find((b) => b.id === rest.id);
+  assert.ok(r.start < 18, "rest now sits before move: " + r.start);
+  const mv = at(after, "move", 17.5) || after.find((b) => b.type === "move" && b.start > 12);
+  assert.ok(mv && mv.start > r.start, "passed its neighbour");
+  assert.equal(after.length, before.length);
+  // let go off the ring: it goes back where it was
+  const pts2 = [await pt(page, r.start + r.len / 2, 148), await pt(page, r.start + r.len / 2, 215), await pt(page, 3, 230)];
+  await dragPath(page, pts2);
+  assert.equal((await state(page)).blocks.find((b) => b.id === rest.id).start, r.start);
+});
+
+await check("name a block: tap the orb, pick or type a name; it shows everywhere", async (page) => {
+  await page.goto(BASE + "?preview&at=10:00");
+  await openShape(page);
+  const w = at((await state(page)).blocks, "work", 9);
+  const p = await pt(page, 10.5, 148);
+  await page.mouse.click(p.x, p.y);
+  assert.equal((await state(page)).selectedId, w.id);
+  const orb = await pt(page, 0, 0);
+  await page.mouse.click(orb.x, orb.y);
+  await page.waitForSelector("#nameDlg[open]");
+  await page.fill("#nameInput", "Deep work <b>");
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(200);
+  assert.equal((await state(page)).blocks.find((b) => b.id === w.id).name, "Deep work b");
+  assert.match(await page.textContent(`#dial .blk[data-id="${w.id}"] .blk-name`), /DEEP WORK/);
+  await page.click("#doneBtn");
+  await page.waitForTimeout(500);
+  assert.equal(await page.textContent("#title"), "Deep work b");
+  // keyboard: Enter on a block opens the same sheet; an idea chip names it at once
+  await openShape(page);
+  await page.focus(`#dial .blk[data-id="${w.id}"]`);
+  await page.keyboard.press("Enter");
+  await page.waitForSelector("#nameDlg[open]");
+  await page.click("#nameIdeas button:first-child");
+  await page.waitForTimeout(200);
+  assert.equal((await state(page)).blocks.find((b) => b.id === w.id).name, "Study");
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.id), w.id, "focus returns to the block");
+  await page.keyboard.press("Control+z");
+  assert.equal((await state(page)).blocks.find((b) => b.id === w.id).name, "Deep work b");
+});
+
+await check("removing a block draws it into the orb", async (page) => {
+  await page.goto(BASE + "?preview&at=10:00");
+  await openShape(page);
+  const w = at((await state(page)).blocks, "work", 14);
+  await dragPath(page, [await pt(page, 15.5, 148), await pt(page, 15.5, 110), await pt(page, 15.5, 30)]);
+  assert.ok(!(await state(page)).blocks.some((b) => b.id === w.id));
+  assert.ok((await page.$$("#dLeave path")).length >= 1, "a leaving shape is drawn");
+  await page.waitForTimeout(600);
+  assert.equal((await page.$$("#dLeave path")).length, 0, "and then it is gone");
+});
+
+await check("Alt-arrows move the start edge the way the arrow points", async (page) => {
+  await page.goto(BASE + "?preview&at=10:00");
+  await openShape(page);
+  const w = at((await state(page)).blocks, "work", 14);
+  await page.focus(`#dial .blk[data-id="${w.id}"]`);
+  await page.keyboard.press("Alt+ArrowRight");
+  let b = (await state(page)).blocks.find((x) => x.id === w.id);
+  assert.equal(b.start, 14.25);
+  assert.equal(b.len, 2.75);
+  await page.keyboard.press("Alt+ArrowLeft");
+  await page.keyboard.press("Alt+ArrowLeft");
+  b = (await state(page)).blocks.find((x) => x.id === w.id);
+  assert.equal(b.start, 13.75);
+});
+
+await check("an empty day can be shared and opened", async (page) => {
+  await page.goto(BASE + "?day=0");
+  await page.waitForTimeout(500);
+  assert.equal((await state(page)).blocks.length, 0);
+  await page.goto(BASE + "?day=w36.8BROKENe51.3");
+  await page.waitForTimeout(500);
+  assert.equal((await state(page)).blocks.length, 0, "a garbled link leaves the (empty) day alone");
+  assert.match(await page.textContent("#toastText"), /didn't hold a whole day/);
+});
+
+await check("rain: the sky greys, the words say so, the reading shows it", async (page) => {
+  await page.goto(BASE + "?preview&at=15:10&day=0&wx=rain&temp=12");
+  await page.waitForTimeout(500);
+  assert.equal(await page.textContent("#title"), "Rainy afternoon");
+  assert.equal(await page.textContent("#subtitle"), "Rain · 12°");
+  const r = await page.$$eval("#readings li", (li) => li.map((x) => x.textContent));
+  assert.ok(r[3].includes("12°"), r.join(" | "));
+  await page.waitForFunction(() => +getComputedStyle(document.documentElement).getPropertyValue("--rain") > 0.3, null, { timeout: 4000 });
+});
+
+await check("real weather is asked for only with a real location, and shows up", async (page) => {
+  let asked = 0;
+  await page.route("https://api.open-meteo.com/**", (route) => { asked++; route.fulfill({ contentType: "application/json", body: JSON.stringify({ elevation: 212, current: { temperature_2m: 18.4, weather_code: 2, cloud_cover: 40 } }) }); });
+  await page.goto(BASE + "?at=09:00");
+  await page.waitForTimeout(400);
+  assert.equal(asked, 0, "no location, no request");
+  await page.evaluate(() => localStorage.setItem("dayshaper.prefs.v1", JSON.stringify({ loc: { lat: 46.95, lon: 7.45 }, shapedOnce: true })));
+  await page.goto(BASE + "?at=09:00");
+  // the data lands, then the next frame paints it: wait for the paint
+  await page.waitForFunction(() => document.querySelector("#readings li:nth-child(4)")?.textContent.includes("18°"), null, { timeout: 4000 });
+  assert.equal(asked, 1);
+  const r = await page.$$eval("#readings li", (li) => li.map((x) => x.textContent));
+  assert.ok(r[3].includes("18°") && r[3].includes("Partly cloudy"), r.join(" | "));
+  await page.click("#menuBtn");
+  assert.equal(await page.textContent("#whereLine"), "Temperate north · 212 m above the sea");
+  assert.match(await page.textContent("#locNote"), /46\.95° N, 7\.45° E · 5,220 km north of the equator/);
+});
+
+await check("the moon wears tonight's phase", async (page) => {
+  await page.clock.install({ time: new Date("2026-09-26T22:00:00") }); // full moon
+  await page.goto(BASE + "?preview&at=23:30");
+  await page.waitForTimeout(400);
+  const d = await page.getAttribute(".moon-lit", "d");
+  assert.match(d, /A16 16 0 0 [01] 20 36A1[56][.\d]* 16/, "a nearly round lit disc: " + d);
+  // the sky crossfades over 1.6 s: wait for it rather than read it mid-fade
+  await page.waitForFunction(() => +getComputedStyle(document.documentElement).getPropertyValue("--moon") > 0.5, null, { timeout: 4000 });
+});
+
 // DST: New York springs forward on 8 March 2026 — ?at=10:00 must still read 10:00
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, timezoneId: "America/New_York" });

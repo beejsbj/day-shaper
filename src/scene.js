@@ -4,8 +4,8 @@
    numbers once a minute (or every frame while the day is playing). */
 
 import { mix, rgba, luminance } from "./color.js";
-import { sunHeight } from "./sky.js";
-import { mod24 } from "./engine.js";
+import { sunHeight, sunSide } from "./sky.js";
+import { moonPath, moonUp } from "./moon.js";
 
 /* Smooth hills from a few summed sines; deterministic so the land never jumps. */
 function ridge(width, height, base, amp, seed, steps = 48) {
@@ -59,18 +59,27 @@ export function createScene(root) {
   addEventListener("resize", scatterStars);
 
   const R = document.documentElement.style;
-  let last = "";
+  const moonLit = root.querySelector(".moon-lit");
+  let last = "", lastMoon = "";
 
-  /** Paint the sky for hour t. */
-  function paint(sky, t, sun) {
+  /** Paint the sky for hour t. `moon` is tonight's phase; `wx` the weather view, if known. */
+  function paint(sky, t, sun, { moon = null, wx = null, south = false } = {}) {
+    // the real moon: its shape, and only while it is above the horizon
+    let moonOp = sky.moon;
+    if (moon) {
+      moonOp *= moonUp(t, moon.phase, sun.noon) * (moon.illum < 0.03 ? 0 : 1);
+      const d = moonPath(moon.phase, 16, 20, 20, south);
+      if (d !== lastMoon) { moonLit.setAttribute("d", d); lastMoon = d; }
+    }
     const lightPills = luminance(sky.inkLow) < 0.3; // dark words ride on pale pills, pale words on deep ones
     const v = {
       "--sky-top": sky.top, "--sky-mid": sky.mid, "--sky-bot": sky.bot,
       "--ridge-0": sky.ridge[0], "--ridge-1": sky.ridge[1], "--ridge-2": sky.ridge[2],
       "--haze": sky.haze,
       "--ink": sky.ink, "--ink-low": sky.inkLow,
-      "--stars": sky.stars.toFixed(3), "--clouds": sky.clouds.toFixed(3), "--moon": sky.moon.toFixed(3),
-      "--cloud": mix("#ffffff", sky.haze, 0.35),
+      "--stars": sky.stars.toFixed(3), "--clouds": sky.clouds.toFixed(3), "--moon": moonOp.toFixed(3),
+      "--rain": ((wx?.rain || 0) * (sky.dark > 0.5 ? 0.55 : 0.8)).toFixed(3), "--snow": (wx?.snow || 0).toFixed(3),
+      "--cloud": wx && wx.cover > 0.6 ? mix(mix("#ffffff", sky.haze, 0.35), sky.dark > 0.5 ? "#39404f" : "#c9ced6", (wx.cover - 0.6) * 1.6) : mix("#ffffff", sky.haze, 0.35),
       "--pill": lightPills ? rgba("#ffffff", 0.5) : rgba("#ffffff", 0.1),
       "--pill-strong": lightPills ? rgba("#ffffff", 0.78) : rgba(mix(sky.mid, "#0b1030", 0.45), 0.78),
       "--pill-line": lightPills ? rgba("#ffffff", 0.6) : rgba("#ffffff", 0.14),
@@ -88,7 +97,7 @@ export function createScene(root) {
 
     // the low sun: rises on the left (where sunrise sits on the dial), sets on the right
     const h = sunHeight(t, sun);
-    const nearRise = mod24(t - sun.sunrise) < mod24(sun.sunset - sun.sunrise) / 2;
+    const nearRise = sunSide(t, sun) === "rise";
     // only when it is genuinely low — resting on the ridges, never floating beside the dial
     if (!sun.polar && h > -0.1 && h < 0.22) {
       const x = nearRise ? 22 - h * 20 : 78 + h * 20;

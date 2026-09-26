@@ -171,20 +171,22 @@ export function gaps(blocks) {
 export function findSpot(blocks, len, from) {
   if (!blocks.length) return { start: mod24(snapUp(from)), len };
   let best = null;
+  const consider = (s, g) => {
+    if (g.start + g.len - s + EPS < len) return;
+    const dist = mod24(s - from);
+    if (!best || dist < best.dist) best = { start: mod24(s), len, dist };
+  };
   for (const g of gaps(blocks)) {
     const rel = mod24(from - g.start);
-    // earliest quarter hour in the gap, at or after `from` when `from` falls inside it
-    const s = snapUp(rel < g.len ? g.start + rel : g.start);
-    const avail = g.start + g.len - s;
-    if (avail + EPS >= len) {
-      const dist = mod24(s - from);
-      if (!best || dist < best.dist) best = { start: mod24(s), len, dist };
-    }
+    // at or after `from` when `from` falls inside the gap…
+    if (rel < g.len) consider(snapUp(g.start + rel), g);
+    // …and always the gap's own start, which is later round the ring
+    consider(snapUp(g.start), g);
   }
   if (best) return { start: best.start, len: best.len };
   const big = gaps(blocks).sort((a, b) => b.len - a.len)[0];
   if (!big) return null;
-  const s = snapUp(big.start), l = snapDown(big.len - (s - big.start));
+  const s = snapUp(big.start), l = Math.min(len, snapDown(big.len - (s - big.start)));
   return l >= MIN_LEN - EPS ? { start: mod24(s), len: l } : null;
 }
 
@@ -220,7 +222,10 @@ export function sanitizeBlocks(list, validTypes) {
     if (validTypes && !validTypes.includes(raw.type)) continue;
     const id = typeof raw.id === "string" && raw.id && !ids.has(raw.id) ? raw.id : uid();
     ids.add(id);
-    out.push({ id, type: raw.type, start: place(start), len: tidy(len) });
+    const b = { id, type: raw.type, start: place(start), len: tidy(len) };
+    const name = typeof raw.name === "string" ? raw.name.replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 24) : "";
+    if (name) b.name = name;
+    out.push(b);
   }
   out = sortBlocks(out);
   while (out.length && totalLen(out) > DAY + EPS) out.pop();

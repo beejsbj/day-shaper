@@ -23,6 +23,8 @@
 @property --stars { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --clouds { syntax: "<number>"; inherits: true; initial-value: 0.95; }
 @property --moon { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --rain { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --snow { syntax: "<number>"; inherits: true; initial-value: 0; }
 
 :root {
   /* ---- type: one family; hierarchy is carried by weight, the thinnest thing is the most important ---- */

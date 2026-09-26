@@ -1,12 +1,13 @@
 /* Offline shell. Network first so a new deploy shows up on the next visit;
    the cache is only the fallback when there is no network. */
 
-const VERSION = "dayshaper-v2.0.1";
+const VERSION = "dayshaper-v2.1.0";
 const SHELL = [
   "./", "index.html", "manifest.webmanifest",
   "styles/tokens.css", "styles/app.css", "fonts/inter-var.woff2",
   "src/main.js", "src/engine.js", "src/time.js", "src/solar.js", "src/color.js", "src/sky.js",
   "src/types.js", "src/context.js", "src/store.js", "src/icons.js", "src/scene.js", "src/dial.js",
+  "src/moon.js", "src/weather.js",
   "icons/icon.svg", "icons/icon-192.png", "icons/apple-touch-icon.png",
 ];
 

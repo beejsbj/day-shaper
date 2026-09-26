@@ -12,7 +12,9 @@ Shape a what-if day on a ring of clay, under a sky that follows the real sun.
 sunset, a single orb holds the time, and a slim dotted ring shows the shape of your day. The orb takes the
 material of what you're doing: porcelain when you're free, a warm sun at golden hour, night glass after dark,
 and the clay of the block you're in, gently breathing. The words are specific: *Focus · Until 12:30 PM*,
-*Time to wind down · Your bedtime is 11:30 PM*, *Almost there · Dawn is 2h 15m away.*
+*Time to wind down · Your bedtime is 11:30 PM*, *Almost there · Dawn is 2h 15m away.* When it rains where you
+are, it rains on the screen too, and it's a *Rainy afternoon*. The moon is tonight's moon, in its real phase,
+and only while it's up. Now is a sun-gold bead on the ring with a slow pulse and a dotted hand to the orb.
 
 **Shaping the day.** Tap the dial (or *Shape your day*). The ring swells into clay, the orb settles into a hub,
 and five stones rise from the bottom.
@@ -23,17 +25,22 @@ and five stones rise from the bottom.
 | Drag a stone onto the ring | Previews the whole cascade live, places it where you let go |
 | Drag a block | Moves it; neighbours are pushed on contact and spring back if you retreat |
 | Drag a block's end | Stretches or shrinks it (15-minute steps) |
-| Drag a block into the orb | Removes it |
+| Drag a block into the orb | Removes it (the orb swallows it) |
+| Pull a block off the ring | Lifts it into your hand like a stone: drop it anywhere, even past its neighbours, to reorder. Let go outside to put it back |
+| Tap the orb with a block chosen | Names it: *Study*, *School run*, anything up to 24 letters |
+| Tap outside the ring, or the sky | Done |
 | Turn the orb | Shifts the whole day together |
 | Tap a block | Selects it: the orb shows its span and length |
 | Undo (toast, ⌘/Ctrl-Z) | Steps back through the last 60 changes |
 
 Keyboard: focus a block with Tab, then use ←/→ to move it, Shift+←/→ for its end, Alt+←/→ for its start, and
-Delete to remove it. Esc deselects, then leaves shaping.
+Delete to remove it, Enter to name it. Esc deselects, then leaves shaping.
+
+The round button beside *Shape your day* turns the dial so now sits on top (tap again for noon on top).
 
 The menu (⋯) has *Play the day* (your shaped day passes in 24 seconds), *Share this day* (a link that opens
-it), *Now on top*, *24-hour clock*, *True sunrise* (uses your location once, only if you ask), a sample day,
-and *Clear the day*.
+it), *24-hour clock*, *Where you are* (asks for your location only if you tap it; then shows it as geography:
+*Temperate north · 27 m above the sea · 4,520 km north of the equator*), a sample day, and *Clear the day*.
 
 ## Decisions worth knowing
 
@@ -51,8 +58,13 @@ and *Clear the day*.
   sky to at least 3:1.
 - **Real sun.** NOAA sunrise/sunset (`src/solar.js`), tested against published times. Without a location it
   estimates from your time zone. Polar day and night are handled.
+- **Weather only from where you are.** Current conditions from [Open-Meteo](https://open-meteo.com) (free, no
+  key), fetched only once you've shared a location, at most every 30 minutes. A time-zone guess can be a
+  thousand kilometres off, so without a real location there is no weather rather than the wrong weather.
+- **Five clays, any names.** The palette stays five materials so the screen stays calm; you can name any block.
 - **No build step.** Plain ES modules, one variable font (Inter, OFL), a network-first service worker for
-  offline use. Everything is stored on your device; nothing is sent anywhere.
+  offline use. Your day is stored on your device. The only request that leaves it is the weather one, with
+your coordinates rounded to about a kilometre.
 
 ## Run it
 
@@ -67,7 +79,9 @@ Useful URLs while designing:
 - `?at=18:47` freezes the clock at that time
 - `?preview` uses the sample day and a fixed sun and saves nothing (the design system's frames use this)
 - `?shape=1` opens in shaping
-- `?day=s94.30w36.14` opens a shared day (type letter, start and length in quarter hours)
+- `?day=s94.30w36.14` opens a shared day (type letter, start and length in quarter hours, then an optional
+  `~name~`); `?day=0` is an empty day
+- `?wx=rain&temp=12` forces the weather (`clear`, `partly`, `cloudy`, `fog`, `drizzle`, `rain`, `snow`, `storm`)
 
 ## Layout
 
@@ -78,6 +92,8 @@ styles/app.css          app styles
 src/engine.js           the ring and its solver (pure)
 src/sky.js              ten moments of sky (pure)
 src/solar.js            sunrise and sunset (pure)
+src/moon.js             the moon's phase and when it's up (pure)
+src/weather.js          weather: Open-Meteo, the grey sky, the words
 src/context.js          what the screen says (pure)
 src/time.js, color.js   formatting, OKLab
 src/types.js            the five clays
