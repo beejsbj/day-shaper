@@ -82,11 +82,11 @@ button, a { font: inherit; color: inherit; background: none; border: 0; cursor: 
   display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
-#top { display: grid; grid-template-columns: minmax(44px, 1fr) minmax(0, auto) minmax(44px, 1fr); align-items: center; gap: 12px 8px; padding: 16px 22px 0; }
-#weatherBtn { grid-column: 2; grid-row: 1; justify-self: center; max-width: 100%; min-width: 0; min-height: 44px; height: auto; padding: 8px 12px; white-space: normal; font-size: 13px; color: var(--ink); }
+#top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 8px; padding: 16px 22px 0; }
+#weatherBtn { grid-column: 1; grid-row: 1; justify-self: start; max-width: 100%; min-width: 0; min-height: 44px; height: auto; padding: 8px 12px; white-space: normal; font-size: 13px; color: var(--ink); }
 #weatherBtn[aria-busy="true"] { cursor: progress; }
 #dialWrap .words { flex: none; min-width: 0; padding: 0 22px; text-align: center; }
-#menuBtn, #doneBtn { grid-column: 3; grid-row: 1; justify-self: end; }
+#menuBtn, #doneBtn { grid-column: 2; grid-row: 1; justify-self: end; }
 #title { font-size: var(--t-title); font-weight: 360; letter-spacing: -0.012em; line-height: 1.15; }
 #subtitle { margin-top: 6px; font-size: var(--t-sub); font-weight: var(--w-book); opacity: 0.78; line-height: 1.35; }
 #title, #subtitle { transition: opacity 0.35s ease; }

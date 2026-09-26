@@ -616,11 +616,12 @@ await check("old Fahrenheit weather is converted even on an offline reload", asy
 
 // Each viewport gets a fresh renderer, as it would on a separate device.
 for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 414, height: 896 }, { width: 695, height: 900 }, { width: 1440, height: 1000 }]) {
-  await check(`weather is centered and controls fit at ${viewport.width}×${viewport.height}`, async (page) => {
+  await check(`weather is left aligned and controls fit at ${viewport.width}×${viewport.height}`, async (page) => {
     await page.goto(BASE + "?preview&wx=storm&temp=-18");
     const box = await page.locator("#weatherBtn").boundingBox();
     const title = await page.locator("#title").boundingBox();
-    assert.ok(Math.abs(box.x + box.width / 2 - viewport.width / 2) < 1, "weather centered");
+    const leftEdge = await page.locator("#top").evaluate((el) => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft));
+    assert.ok(Math.abs(box.x - leftEdge) < 1, "weather at the header left edge");
     assert.ok(box.y >= 0 && box.y + box.height <= title.y, "weather above title");
     assert.ok(box.x >= 0 && box.x + box.width <= viewport.width, "weather fits");
     const menu = await page.locator("#menuBtn").boundingBox();
@@ -630,7 +631,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }
     assert.equal(await page.locator("#weatherBtn").isVisible(), true);
     const weather = await page.locator("#weatherBtn").boundingBox();
     const done = await page.locator("#doneBtn").boundingBox();
-    assert.ok(Math.abs(weather.x + weather.width / 2 - viewport.width / 2) < 1, "weather stays centered when shaping");
+    assert.ok(Math.abs(weather.x - leftEdge) < 1, "weather stays left aligned when shaping");
     assert.ok(Math.abs(done.y + done.height / 2 - weather.y - weather.height / 2) < 1, "weather and Done aligned");
     assert.ok(weather.x + weather.width + 6 <= done.x, "weather clears Done");
     const tray = await page.locator("#tray").boundingBox();
