@@ -1,17 +1,18 @@
 {
-  "name": "Day Shaper",
-  "short_name": "Day Shaper",
-  "description": "Shape a what-if day on a ring of clay, under a sky that follows the real sun.",
-  "start_url": "./",
-  "scope": "./",
+  "id": "/",
+  "name": "Dayshaper",
+  "short_name": "Dayshaper",
+  "description": "A tactile day planner on a ring of clay, under a sky that follows the sun. Install it, shape your day, and take it offline.",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#d6e2ee",
   "theme_color": "#b3cce8",
   "categories": ["productivity", "lifestyle"],
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
   ]

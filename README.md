@@ -1,106 +1,78 @@
-# Day Shaper
+<p align="center"><img src="icons/logo.svg" width="96" height="96" alt="Dayshaper logo"></p>
 
-Shape a what-if day on a ring of clay, under a sky that follows the real sun.
+# Dayshaper
 
-**Live:** https://day-shaper-psi.vercel.app · **Design system:** [`/design-system/`](design-system/)
+Shape your day on a ring of clay, under a sky that follows the sun.
 
-![Day Shaper at morning, golden hour and bedtime](icons/og.png)
+**[Open Dayshaper](https://dayshaper.burooj.dev)** · [Design system](https://dayshaper.burooj.dev/design-system/)
 
-## Two states of one object
+![Dayshaper: shaping a day and settling into the evening](icons/og.png)
 
-**Living the day.** The screen is one moment: the sky is painted for this minute from the real sunrise and
-sunset, a single orb holds the time, and a slim dotted ring shows the shape of your day. The orb takes the
-material of what you're doing: porcelain when you're free, a warm sun at golden hour, night glass after dark,
-and the clay of the block you're in, gently breathing. The words are specific: *Focus · Until 12:30 PM*,
-*Time to wind down · Your bedtime is 11:30 PM*, *Almost there · Dawn is 2h 15m away.* When it rains where you
-are, it rains on the screen too, and it's a *Rainy afternoon*. The moon is tonight's moon, in its real phase,
-and only while it's up. Now is a sun-gold bead on the ring with a slow pulse and a dotted hand to the orb.
+A small, tactile day planner. Stretch time, move things around, and see how a different day feels. The sky follows the daylight, the moon follows its phase, and the orb takes on the colour of what you're doing now.
 
-**Shaping the day.** Tap the dial (or *Shape your day*). The ring swells into clay, the orb settles into a hub,
-and five stones rise from the bottom.
+No account. Your day stays in your browser. Install it on your home screen and use it offline after the first visit.
 
-| Gesture | What happens |
+## Shape a day
+
+Tap **Shape your day**. Five clay stones give you somewhere to start: sleep, focus, food, movement, and rest. Name any block to make it yours.
+
+| Action | How |
 | --- | --- |
-| Tap a stone | Adds it at the next free stretch after now that fits |
-| Drag a stone onto the ring | Previews the whole cascade live, places it where you let go |
-| Drag a block | Moves it; neighbours are pushed on contact and spring back if you retreat |
-| Drag a block's end | Stretches or shrinks it (15-minute steps) |
-| Drag a block into the orb | Removes it (the orb swallows it) |
-| Pull a block off the ring | Lifts it into your hand like a stone: drop it anywhere, even past its neighbours, to reorder. Let go outside to put it back |
-| Tap the orb with a block chosen | Names it: *Study*, *School run*, anything up to 24 letters |
-| Tap outside the ring, or the sky | Done |
-| Turn the orb | Shifts the whole day together |
-| Tap a block | Selects it: the orb shows its span and length |
-| Undo (toast, ⌘/Ctrl-Z) | Steps back through the last 60 changes |
+| Add time | Tap a stone, or drag it onto the ring |
+| Move a block | Drag it; neighbouring blocks make room |
+| Change its length | Drag either edge in 15-minute steps |
+| Reorder | Pull a block off the ring, then drop it somewhere else |
+| Remove | Drag a block into the orb |
+| Rename | Select a block, then tap the orb |
+| Shift the whole day | Turn the orb |
+| Finish | Tap Done or the sky outside the ring |
+| Undo | Use the toast or ⌘/Ctrl-Z |
 
-Keyboard: focus a block with Tab, then use ←/→ to move it, Shift+←/→ for its end, Alt+←/→ for its start, and
-Delete to remove it, Enter to name it. Esc deselects, then leaves shaping.
+The ring crosses midnight, so a night's sleep stays one block. The round button beside **Shape your day** switches between noon and now at the top. In the menu, **Play the day** runs through it in 24 seconds; **Share this day** makes a link containing the schedule, including your block names.
 
-The round button beside *Shape your day* turns the dial so now sits on top (tap again for noon on top).
+**Keyboard:** Tab to a block. ←/→ moves it; Shift+←/→ changes its end; Alt+←/→ changes its start. Enter renames, Delete removes, and Esc deselects or leaves shaping.
 
-The menu (⋯) has *Play the day* (your shaped day passes in 24 seconds), *Share this day* (a link that opens
-it), *24-hour clock*, *Where you are* (asks for your location only if you tap it; then shows it as geography:
-*Temperate north · 27 m above the sea · 4,520 km north of the equator*), a sample day, and *Clear the day*.
+## Install
 
-## Decisions worth knowing
+Open the menu and choose **Install Dayshaper**. Supported browsers offer installation directly. On iPhone or iPad, open the site in Safari and use **Share → Add to Home Screen**. Your installed copy uses the same day saved by that browser.
 
-- **The day is a ring.** Blocks can cross midnight, so sleep from 11:30 PM to 7:00 AM is one block. The first
-  version couldn't do this.
-- **One solver, pure.** Every edit is a function of the snapshot taken when your finger landed. The block
-  under your hand is pinned; the others keep their order around the ring and settle as close to where they
-  were as possible (`src/engine.js`). A property test runs 10,000 random edits and checks that nothing overlaps
-  and nothing passes through anything else.
-- **Dropping into a block disturbs the day as little as possible.** The engine tries both directions and
-  keeps the one that moves the fewest hours.
-- **Ten moments of sky, pinned to the sun.** Midnight, pre-dawn, dawn, sunrise, morning, noon, afternoon,
-  golden hour, dusk, blue hour. Each is a complete atmosphere, blended in OKLab so dusk passes through violet
-  instead of grey (`src/sky.js`). Ink is *chosen* by contrast, never blended; tests hold every minute of every
-  sky to at least 3:1.
-- **Real sun.** NOAA sunrise/sunset (`src/solar.js`), tested against published times. Without a location it
-  estimates from your time zone. Polar day and night are handled.
-- **Weather only from where you are.** Current conditions from [Open-Meteo](https://open-meteo.com) (free, no
-  key), fetched only once you've shared a location, at most every 30 minutes. A time-zone guess can be a
-  thousand kilometres off, so without a real location there is no weather rather than the wrong weather.
-- **Five clays, any names.** The palette stays five materials so the screen stays calm; you can name any block.
-- **No build step.** Plain ES modules, one variable font (Inter, OFL), a network-first service worker for
-  offline use. Your day is stored on your device. The only request that leaves it is the weather one, with
-your coordinates rounded to about a kilometre.
+The app works offline once its files have been cached. Fresh weather needs a connection.
 
-## Run it
+## Location and privacy
+
+The sun starts with an estimate from your time zone. **Where you are** asks for your location to calculate more accurate sunrise and sunset times and show the weather.
+
+- The schedule and preferences are saved on your device. There is no account or server-side schedule storage.
+- Weather comes from [Open-Meteo](https://open-meteo.com/). This request sends coordinates rounded to about a kilometre; weather is refreshed at most every 30 minutes during normal use.
+- Nearby rivers, lakes, and terrain are matched on your device against bundled [Natural Earth](https://www.naturalearthdata.com/) data. This describes major physical features, not every local landform. The map is cached with the app for offline use (about 1.9 MB before compression). Coordinates are the fallback where coverage is sparse.
+- A shared link contains the day's blocks and their names, but not your location. Anyone with the link can read that schedule.
+
+**Moving from the old Vercel URL?** Open your saved day there, choose **Share this day**, and change only the hostname in the copied link to `dayshaper.burooj.dev`. Browser storage belongs to each domain, so it cannot move automatically.
+
+## Run locally
+
+Requires Node.js 20 or later. The app is plain HTML, CSS, SVG, and JavaScript modules; there is no build step.
 
 ```sh
-npm start            # serves the folder on http://localhost:8791
-npm test             # unit tests (node --test): engine, sky, solar, words
-npm run test:e2e     # drives the real app in Chromium (needs Playwright)
+npm start                         # http://localhost:8791
+npm test                          # engine, sky, solar, moon, weather, geography
+npm install --no-save playwright@1.56.1
+npx playwright install chromium   # add --with-deps on a fresh Linux machine
+npm run test:e2e                   # browser tests; starts its own server
 ```
 
-Useful URLs while designing:
+Preview tools: `?preview&at=18:47` freezes a sample day without saving it; add `&shape=1` to open shaping. `?wx=rain&temp=12` previews weather. The [design system](design-system/) uses the same app files and tokens.
 
-- `?at=18:47` freezes the clock at that time
-- `?preview` uses the sample day and a fixed sun and saves nothing (the design system's frames use this)
-- `?shape=1` opens in shaping
-- `?day=s94.30w36.14` opens a shared day (type letter, start and length in quarter hours, then an optional
-  `~name~`); `?day=0` is an empty day
-- `?wx=rain&temp=12` forces the weather (`clear`, `partly`, `cloudy`, `fog`, `drizzle`, `rain`, `snow`, `storm`)
+## Inside
 
-## Layout
+- `src/engine.js` — the circular schedule solver; edits push neighbours without overlaps.
+- `src/sky.js`, `solar.js`, `moon.js`, `weather.js` — light, astronomy, and conditions.
+- `src/geography.js` and `data/` — nearby physical features, matched locally.
+- `src/scene.js`, `dial.js`, `main.js` — rendering, state, and gestures.
+- `src/store.js` — persistence, undo, and share links.
+- `styles/` — shared tokens and app styles.
+- `sw.js`, `manifest.webmanifest` — offline caching and installation.
 
-```
-index.html              the shell
-styles/tokens.css       design tokens (shared with the design system page)
-styles/app.css          app styles
-src/engine.js           the ring and its solver (pure)
-src/sky.js              ten moments of sky (pure)
-src/solar.js            sunrise and sunset (pure)
-src/moon.js             the moon's phase and when it's up (pure)
-src/weather.js          weather: Open-Meteo, the grey sky, the words
-src/context.js          what the screen says (pure)
-src/time.js, color.js   formatting, OKLab
-src/types.js            the five clays
-src/store.js            storage, undo history, share links
-src/scene.js            paints the sky, ridges, clouds, stars, moon, low sun
-src/dial.js             the dial: live ring ↔ clay ring, orb, labels
-src/main.js             state, gestures, frame loop
-design-system/          the design system, built from the same files
-test/                   unit tests and the end-to-end smoke test
-```
+`node scripts/render-brand.mjs` regenerates the logo exports, install icons, and social card from the SVGs and actual app screens (requires Playwright). Map data can be regenerated with `python3 scripts/build-geography.py`; provenance and third-party credits are in [THIRD_PARTY.md](THIRD_PARTY.md).
+
+Made by [Burooj](https://burooj.dev).

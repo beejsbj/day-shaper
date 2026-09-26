@@ -3,21 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Day Shaper</title>
-<meta name="description" content="Shape a what-if day on a ring of clay, under a sky that follows the real sun.">
+<title>Dayshaper — Shape your day</title>
+<meta name="description" content="A tactile day planner on a ring of clay, under a sky that follows the sun. Install it, shape your day, and take it offline.">
+<link rel="canonical" href="https://dayshaper.burooj.dev/">
 <meta name="theme-color" content="#b3cce8">
 <meta name="color-scheme" content="light dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Day Shaper">
+<meta name="apple-mobile-web-app-title" content="Dayshaper">
 <meta name="format-detection" content="telephone=no">
-<meta property="og:title" content="Day Shaper">
-<meta property="og:description" content="Shape a what-if day on a ring of clay, under a sky that follows the real sun.">
-<meta property="og:image" content="https://day-shaper-psi.vercel.app/icons/og.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dayshaper">
+<meta property="og:url" content="https://dayshaper.burooj.dev/">
+<meta property="og:title" content="Dayshaper — Shape your day">
+<meta property="og:description" content="A tactile day planner on a ring of clay, under a sky that follows the sun. Install it, shape your day, and take it offline.">
+<meta property="og:image" content="https://dayshaper.burooj.dev/icons/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:alt" content="Dayshaper, a tactile day planner beneath a changing sky">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Dayshaper — Shape your day">
+<meta name="twitter:description" content="A tactile day planner on a ring of clay, under a sky that follows the sun. Install it, shape your day, and take it offline.">
+<meta name="twitter:image" content="https://dayshaper.burooj.dev/icons/og.png">
+<meta name="twitter:image:alt" content="Dayshaper, a tactile day planner beneath a changing sky">
+<meta name="application-name" content="Dayshaper">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="shortcut icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preload" href="fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles/tokens.css">
@@ -39,7 +53,7 @@
 <main id="app">
   <header id="top">
     <div class="words">
-      <h1 id="title">Day Shaper</h1>
+      <h1 id="title">Dayshaper</h1>
       <p id="subtitle">&nbsp;</p>
     </div>
     <button id="menuBtn" class="round" type="button" aria-label="Menu" aria-haspopup="dialog"></button>
@@ -78,7 +92,7 @@
 <dialog id="menu" aria-labelledby="menuTitle">
   <form method="dialog" class="sheet">
     <div class="grab" aria-hidden="true"></div>
-    <h2 id="menuTitle">Day Shaper</h2>
+    <h2 id="menuTitle">Dayshaper</h2>
     <p class="sheet-sub" id="menuSub"></p>
     <div class="group">
       <button type="button" class="item" data-act="play"><span class="ic" data-i="play"></span><span class="lbl">Play the day<small>Watch your shaped day pass in 24 seconds</small></span></button>
@@ -89,10 +103,22 @@
       <button type="button" class="item" data-act="locate"><span class="ic" data-i="pin"></span><span class="lbl"><span id="whereLine">Where you are</span><small id="locNote"></small></span></button>
     </div>
     <div class="group">
+      <button type="button" class="item" id="installBtn"><span class="ic" data-i="install"></span><span class="lbl">Install Dayshaper<small>Add it to your home screen</small></span></button>
+    </div>
+    <div class="group">
       <button type="button" class="item" data-act="sample"><span class="ic" data-i="reset"></span><span class="lbl">Start from a sample day</span></button>
       <button type="button" class="item" data-act="clear"><span class="ic" data-i="clear"></span><span class="lbl">Clear the day</span></button>
       <a class="item" href="design-system/"><span class="ic" data-i="palette"></span><span class="lbl">Design system</span></a>
     </div>
+    <button class="pill close" value="close">Close</button>
+  </form>
+</dialog>
+
+<dialog id="installDlg" aria-labelledby="installTitle">
+  <form method="dialog" class="sheet">
+    <div class="grab" aria-hidden="true"></div>
+    <h2 id="installTitle">Install Dayshaper</h2>
+    <p class="sheet-sub" id="installMessage" aria-live="polite"></p>
     <button class="pill close" value="close">Close</button>
   </form>
 </dialog>
@@ -112,6 +138,9 @@
 </dialog>
 
 <div id="rotate" aria-hidden="true"><p>Hold it upright<br><small>the day is shaped in portrait</small></p></div>
-<noscript><p class="noscript">Day Shaper needs JavaScript to shape your day.</p></noscript>
+<noscript><p class="noscript">Dayshaper is a tactile day planner that shows the changing real sky. Turn on JavaScript to shape, save, and share your day.</p></noscript>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Dayshaper","url":"https://dayshaper.burooj.dev/","description":"A tactile day planner on a ring of clay, under a sky that follows the sun. Install it, shape your day, and take it offline.","applicationCategory":"ProductivityApplication","operatingSystem":"Web","browserRequirements":"Requires JavaScript and a modern browser","image":"https://dayshaper.burooj.dev/icons/og.png"}
+</script>
 </body>
 </html>

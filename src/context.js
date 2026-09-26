@@ -113,21 +113,16 @@ export function readings({ t, blocks, sun, hour12, next, wx = null }) {
 }
 
 /** Where you are, as geography rather than an address. */
-export function geography(loc, elevation = null) {
-  const lat = loc.lat, lon = loc.lon, a = Math.abs(lat);
-  const ns = lat >= 0 ? "north" : "south";
-  const band = a < 10 ? "Equatorial belt"
-    : a < 23.44 ? `Tropics, ${ns}`
-    : a < 35 ? `Subtropics, ${ns}`
-    : a < 55 ? `Temperate ${ns}`
-    : a < 66.56 ? (lat >= 0 ? "Subarctic" : "Subantarctic")
-    : (lat >= 0 ? "Arctic" : "Antarctic");
-  const km = Math.round((a * 40007.86) / 360 / 10) * 10;
-  const coords = `${a.toFixed(2)}° ${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(2)}° ${lon >= 0 ? "E" : "W"}`;
-  const parts = [band];
-  if (elevation != null) parts.push(elevation < 1 ? "at sea level" : Math.round(elevation).toLocaleString("en") + " m above the sea");
-  const fromEquator = km < 10 ? "on the equator" : km.toLocaleString("en") + " km " + ns + " of the equator";
-  return { line: parts.join(" · "), detail: coords + " · " + fromEquator };
+export function geography(loc, elevation = null, place = null) {
+  const lat = Number(loc?.lat), lon = Number(loc?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { line: "Your location", detail: "Location unavailable" };
+  const coords = `${Math.abs(lat).toFixed(2)}° ${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(2)}° ${lon >= 0 ? "E" : "W"}`;
+  const parts = [place?.name ? (place.relation === "near" ? "Near " + place.name : place.name) : "Your location"];
+  if (Number.isFinite(elevation)) {
+    const metres = Math.round(Math.abs(elevation)).toLocaleString("en") + " m";
+    parts.push(elevation < -1 ? metres + " below sea level" : elevation <= 1 ? "at sea level" : metres + " above sea level");
+  }
+  return { line: parts.join(" · "), detail: coords };
 }
 
 export const shapedSummary = (blocks) =>

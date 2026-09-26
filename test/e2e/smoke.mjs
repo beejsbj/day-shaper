@@ -78,6 +78,117 @@ await check("loads calm and tells the moment", async (page) => {
   assert.equal((await page.$$("#readings li")).length, 4);
 });
 
+await check("static SEO and manifest contract", async (page) => {
+  await page.goto(BASE);
+  assert.equal(await page.title(), "Dayshaper — Shape your day");
+  assert.equal(await page.locator('link[rel="canonical"]').getAttribute("href"), "https://dayshaper.burooj.dev/");
+  assert.equal(await page.locator('meta[property="og:type"]').getAttribute("content"), "website");
+  assert.equal(await page.locator('meta[property="og:site_name"]').getAttribute("content"), "Dayshaper");
+  assert.equal(await page.locator('meta[property="og:image:width"]').getAttribute("content"), "1200");
+  assert.equal(await page.locator('meta[property="og:image:height"]').getAttribute("content"), "630");
+  assert.ok(await page.locator('meta[name="twitter:image:alt"]').count());
+  const schema = await page.locator('script[type="application/ld+json"]').textContent();
+  assert.equal(JSON.parse(schema)["@type"], "WebApplication");
+  const staticCard = await page.request.get(BASE + "?day=w36.8BROKENe51.3").then((r) => r.text());
+  assert.match(staticCard, /Dayshaper is a tactile day planner that shows the changing real sky/);
+  const design = await page.request.get(BASE + "design-system/");
+  assert.match(await design.text(), /<title>Dayshaper Design System<\/title>/);
+  assert.match(await design.text(), /https:\/\/dayshaper\.burooj\.dev\/design-system\//);
+  const packageInfo = await page.request.get(BASE + "package.json").then((r) => r.json());
+  assert.equal(packageInfo.name, "dayshaper");
+  assert.equal(packageInfo.private, true);
+  const manifest = await page.evaluate(async () => fetch(document.querySelector('link[rel="manifest"]').href).then((r) => r.json()));
+  assert.equal(manifest.id, "/");
+  assert.equal(manifest.name, "Dayshaper");
+  assert.equal(manifest.start_url, "/");
+  assert.equal(manifest.scope, "/");
+  assert.equal(manifest.display, "standalone");
+  assert.ok(manifest.icons.some((icon) => icon.purpose === "maskable"));
+});
+
+await check("iOS gets manual Add to Home Screen guidance", async (page) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "userAgent", { value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1" });
+    Object.defineProperty(navigator, "platform", { value: "iPhone" });
+  });
+  await page.goto(BASE);
+  await page.click("#menuBtn");
+  await page.click("#installBtn");
+  assert.match(await page.textContent("#installMessage"), /Share button in Safari.*Add to Home Screen/i);
+});
+
+await check("installed standalone app hides its install affordance", async (page) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, "standalone", { value: true }));
+  await page.goto(BASE);
+  await page.click("#menuBtn");
+  assert.equal(await page.locator("#installBtn").isHidden(), true);
+});
+
+await check("install fallback can be dismissed", async (page) => {
+  await page.goto(BASE);
+  await page.click("#menuBtn");
+  await page.click("#installBtn");
+  assert.equal(await page.locator("#installDlg").isVisible(), true);
+  assert.match(await page.textContent("#installMessage"), /browser does not offer an install prompt/i);
+  await page.locator("#installDlg button[value=close]").click();
+  assert.equal(await page.locator("#installDlg").isVisible(), false);
+  await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+  assert.equal(await page.locator("#installBtn").isHidden(), true);
+});
+
+await check("offline reload and shared-day URL use the cached generic shell", async (page) => {
+  await page.goto(BASE + "?day=0");
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  await page.reload();
+  await page.waitForTimeout(200);
+  await page.context().setOffline(true);
+  await page.reload();
+  assert.equal(await page.title(), "Dayshaper — Shape your day");
+  await page.goto(BASE + "?day=w36.8BROKENe51.3");
+  assert.equal(await page.title(), "Dayshaper — Shape your day");
+  assert.equal(await page.locator("#app").count(), 1);
+  assert.equal(await page.locator("#title").isVisible(), true);
+});
+
+await check("returning location updates share one map download", async (page) => {
+  let downloads = 0;
+  await page.addInitScript(() => {
+    localStorage.setItem("dayshaper.prefs.v1", JSON.stringify({ loc: { lat: 43.653, lon: -79.383 }, shapedOnce: true }));
+    navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 25, longitude: 0 } });
+  });
+  await page.route("**/data/geography.json", async (route) => {
+    downloads++;
+    await new Promise((r) => setTimeout(r, 250));
+    await route.fulfill({ contentType: "application/json", body: await readFile(join(ROOT, "data/geography.json")) });
+  });
+  await page.goto(BASE + "?wx=clear&temp=18");
+  await page.click("#menuBtn");
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent === "Sahara · 30 m above sea level");
+  assert.equal(downloads, 1);
+});
+
+await check("first offline location lookup and later travel use the installed map", async (page) => {
+  await page.goto(BASE);
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  await page.context().setOffline(true);
+  await page.evaluate(() => {
+    navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 43.653, longitude: -79.383 } });
+  });
+  await page.click("#menuBtn");
+  await page.click('[data-act="locate"]');
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent === "Near Lake Ontario");
+  await page.evaluate(() => {
+    navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 25, longitude: 0 } });
+  });
+  await page.click('[data-act="locate"]');
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent === "Sahara");
+  await page.evaluate(() => {
+    navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 0, longitude: -140 } });
+  });
+  await page.click('[data-act="locate"]');
+  assert.equal(await page.textContent("#whereLine"), "Your location");
+});
+
 await check("tap the dial to start shaping, Done to return", async (page) => {
   await page.goto(BASE + "?preview&at=10:00");
   const c = await pt(page, 0, 0);
@@ -423,8 +534,16 @@ await check("real weather is asked for only with a real location, and shows up",
   const r = await page.$$eval("#readings li", (li) => li.map((x) => x.textContent));
   assert.ok(r[3].includes("18°") && r[3].includes("Partly cloudy"), r.join(" | "));
   await page.click("#menuBtn");
-  assert.equal(await page.textContent("#whereLine"), "Temperate north · 212 m above the sea");
-  assert.match(await page.textContent("#locNote"), /46\.95° N, 7\.45° E · 5,220 km north of the equator/);
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent.startsWith("Alps"));
+  assert.equal(await page.textContent("#whereLine"), "Alps · 212 m above sea level");
+  assert.equal(await page.textContent("#locNote"), "46.95° N, 7.45° E");
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  await page.waitForFunction(async () => !!(await caches.match(new URL("data/geography.json", location.href).href)));
+  await page.context().setOffline(true);
+  await page.reload();
+  await page.click("#menuBtn");
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent.startsWith("Alps"));
+  assert.match(await page.textContent("#whereLine"), /^Alps/);
 });
 
 await check("the moon wears tonight's phase", async (page) => {

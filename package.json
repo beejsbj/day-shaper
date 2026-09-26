@@ -1,7 +1,7 @@
 {
-  "name": "day-shaper",
+  "name": "dayshaper",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "Mold a what-if day on a round dial of clay, under a sky that follows the real sun.",
   "type": "module",
   "scripts": {

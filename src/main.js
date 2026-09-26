@@ -1,4 +1,4 @@
-/* Day Shaper — wiring. State lives here; everything it draws comes from pure
+/* Dayshaper — wiring. State lives here; everything it draws comes from pure
    modules (engine, sky, context) and two renderers (scene, dial). */
 
 import {
@@ -9,6 +9,7 @@ import { TYPES, typeOf, sampleDay } from "./types.js";
 import { skyAt } from "./sky.js";
 import { sunForDate, guessLocation } from "./solar.js";
 import { describe, readings, shapedSummary, geography, blockName } from "./context.js";
+import { matchGeography } from "./geography.js";
 import { hourOf, detectHour12, clockParts, fmtTime, fmtNow, fmtRange, fmtDur } from "./time.js";
 import { loadBlocks, saveBlocks, loadPrefs, savePrefs, createHistory, encodeDay, decodeDay, storageWorks, cleanName } from "./store.js";
 import { moonPhase } from "./moon.js";
@@ -17,6 +18,7 @@ import { installSprite, icon } from "./icons.js";
 import { mixDeep, lighten, luminance } from "./color.js";
 import { createScene } from "./scene.js";
 import { createDial, R } from "./dial.js";
+import "./install.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -83,6 +85,9 @@ let wxRaw = forcedWx || (() => {
   } catch { return null; }
 })();
 let wx = weatherView(wxRaw);
+let geographyData = null;
+let geographyLoading = null;
+let place = null;
 async function refreshWeather(force = false) {
   if (forcedWx || PREVIEW || !prefs.loc || navigator.onLine === false) return;
   if (!force && wxRaw && Date.now() - wxRaw.at < 30 * 60e3) return;
@@ -92,6 +97,27 @@ async function refreshWeather(force = false) {
     try { localStorage.setItem(WX_KEY, JSON.stringify(w)); } catch { /* full */ }
     request();
   } catch { /* offline or refused: keep what we had */ }
+}
+
+async function refreshGeography() {
+  if (PREVIEW || !prefs.loc) return;
+  try {
+    if (!geographyData) {
+      geographyLoading ||= (async () => {
+        // The map is precached with the installed shell. No coordinates enter
+        // this request. Concurrent location updates share this one load.
+        const url = new URL("data/geography.json", location.href).href;
+        let response;
+        try { response = await fetch(url); } catch { /* offline cache below */ }
+        if (!response?.ok && "caches" in window) response = await caches.match(url);
+        return response?.ok ? response.json() : null;
+      })().finally(() => { geographyLoading = null; });
+      geographyData = await geographyLoading;
+      if (!geographyData) return;
+    }
+    place = matchGeography(geographyData, prefs.loc);
+    if (menu.open) syncMenu();
+  } catch { /* first visit without a cached map: coordinates still work */ }
 }
 
 /* ---------------- DOM ---------------- */
@@ -861,7 +887,7 @@ $("app").addEventListener("click", (e) => {
 const menu = $("menu");
 function syncMenu() {
   menu.querySelector('[data-act="hour12"]').setAttribute("aria-checked", String(!hour12));
-  const geo = geography(loc, wxRaw && prefs.loc ? wxRaw.elevation ?? null : null);
+  const geo = geography(loc, wxRaw && prefs.loc ? wxRaw.elevation ?? null : null, place);
   setText($("whereLine"), prefs.loc ? geo.line : "Where you are");
   setText($("locNote"), prefs.loc ? geo.detail : "Guessed from your time zone · tap for the true sun and the weather");
   setText($("menuSub"), shapedSummary(blocks) + " · sunrise " + fmtTime(sun.sunrise, hour12) + ", sunset " + fmtTime(sun.sunset, hour12));
@@ -886,8 +912,10 @@ function locate(ask) {
     (pos) => {
       loc = { lat: +pos.coords.latitude.toFixed(3), lon: +pos.coords.longitude.toFixed(3) };
       prefs.loc = loc; persistPrefs();
+      place = geographyData ? matchGeography(geographyData, loc) : null;
       sunKey = ""; refreshSun(clockDate());
       refreshWeather(true).then(() => { if (menu.open) syncMenu(); });
+      refreshGeography(); // same-origin data only; no location is included in its URL
       if (ask) { syncMenu(); toast("Sunrise " + fmtTime(sun.sunrise, hour12) + " · sunset " + fmtTime(sun.sunset, hour12), false); }
       request();
     },
@@ -946,7 +974,7 @@ addEventListener("storage", (e) => {
 setPanels();
 setHint();
 if (mode === "shape") setPanels();
-if (!PREVIEW && prefs.loc) locate(false);
+if (!PREVIEW && prefs.loc) { refreshGeography(); locate(false); }
 else if (!PREVIEW && navigator.permissions?.query) {
   navigator.permissions.query({ name: "geolocation" }).then((s) => { if (s.state === "granted") locate(false); }).catch(() => {});
 }

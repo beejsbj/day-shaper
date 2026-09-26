@@ -66,11 +66,11 @@ test("fetchWeather asks Open-Meteo for the right place and reads the answer", as
 });
 
 test("location reads as geography", () => {
-  const g = geography({ lat: 40.713, lon: -74.006 }, 27);
-  assert.equal(g.line, "Temperate north · 27 m above the sea");
-  assert.equal(g.detail, "40.71° N, 74.01° W · 4,520 km north of the equator");
-  assert.equal(geography({ lat: -33.87, lon: 151.21 }).line, "Subtropics, south");
-  assert.equal(geography({ lat: 78.2, lon: 15.6 }, 0).line, "Arctic · at sea level");
+  const g = geography({ lat: 40.713, lon: -74.006 }, 27, { name: "Hudson River", relation: "near" });
+  assert.equal(g.line, "Near Hudson River · 27 m above sea level");
+  assert.equal(g.detail, "40.71° N, 74.01° W");
+  assert.equal(geography({ lat: -33.87, lon: 151.21 }).line, "Your location");
+  assert.equal(geography({ lat: 78.2, lon: 15.6 }, -12).line, "Your location · 12 m below sea level");
 });
 
 test("a named block is called by its name, in words and in links", () => {
