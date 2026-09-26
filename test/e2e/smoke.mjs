@@ -180,7 +180,9 @@ await check("first offline location lookup and later travel use the installed ma
   await page.evaluate(() => {
     navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 25, longitude: 0 } });
   });
-  await page.click('[data-act="locate"]');
+  await page.keyboard.press("Escape");
+  await page.click("#weatherBtn");
+  await page.click("#menuBtn");
   await page.waitForFunction(() => document.querySelector("#whereLine").textContent === "Sahara");
   await page.evaluate(() => {
     navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 0, longitude: -140 } });

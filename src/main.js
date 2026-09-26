@@ -927,8 +927,8 @@ function syncMenu() {
 $("menuBtn").addEventListener("click", () => { syncMenu(); menu.showModal(); });
 $("weatherBtn").addEventListener("click", () => {
   if (locating || weatherLoading) return;
-  // A failed request can be retried at the saved location without another GPS fix.
-  if (prefs.loc && (!wx || weatherFailed)) refreshWeather(true);
+  // Retry failed weather at the saved location; offline GPS can still update the sun.
+  if (navigator.onLine !== false && prefs.loc && (!wx || weatherFailed)) refreshWeather(true);
   else locate(true);
 });
 menu.addEventListener("click", (e) => {
