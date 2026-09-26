@@ -99,21 +99,21 @@ async function refreshWeather(force = false) {
 }
 
 async function refreshGeography() {
+  if (PREVIEW || !prefs.loc) return;
   try {
-    // Cache explicitly too: the first location lookup can finish before the
-    // service worker takes control. No coordinates enter this request.
-    const url = new URL("data/geography.json", location.href).href;
-    let response;
-    try { response = await fetch(url); } catch { /* use the saved map below */ }
-    if (response?.ok && "caches" in window) {
-      try { await (await caches.open("dayshaper-map-v1")).put(url, response.clone()); } catch { /* quota */ }
+    if (!geographyData) {
+      // The map is precached with the installed shell. No coordinates enter
+      // this request, and a loaded map can describe any later location.
+      const url = new URL("data/geography.json", location.href).href;
+      let response;
+      try { response = await fetch(url); } catch { /* offline cache below */ }
+      if (!response?.ok && "caches" in window) response = await caches.match(url);
+      if (!response?.ok) return;
+      geographyData = await response.json();
     }
-    if (!response?.ok && "caches" in window) response = await caches.match(url);
-    if (!response?.ok) return;
-    geographyData = await response.json();
     place = matchGeography(geographyData, prefs.loc);
     if (menu.open) syncMenu();
-  } catch { /* offline or first-use cache miss: coordinates still describe the place */ }
+  } catch { /* first visit without a cached map: coordinates still work */ }
 }
 
 /* ---------------- DOM ---------------- */
@@ -908,6 +908,7 @@ function locate(ask) {
     (pos) => {
       loc = { lat: +pos.coords.latitude.toFixed(3), lon: +pos.coords.longitude.toFixed(3) };
       prefs.loc = loc; persistPrefs();
+      place = geographyData ? matchGeography(geographyData, loc) : null;
       sunKey = ""; refreshSun(clockDate());
       refreshWeather(true).then(() => { if (menu.open) syncMenu(); });
       refreshGeography(); // same-origin data only; no location is included in its URL

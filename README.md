@@ -44,7 +44,7 @@ The sun starts with an estimate from your time zone. **Where you are** asks for 
 
 - The schedule and preferences are saved on your device. There is no account or server-side schedule storage.
 - Weather comes from [Open-Meteo](https://open-meteo.com/). This request sends coordinates rounded to about a kilometre; weather is refreshed at most every 30 minutes during normal use.
-- Nearby rivers, lakes, and terrain are matched on your device against bundled [Natural Earth](https://www.naturalearthdata.com/) data. This describes major physical features, not every local landform. Coordinates are the fallback where coverage is sparse.
+- Nearby rivers, lakes, and terrain are matched on your device against bundled [Natural Earth](https://www.naturalearthdata.com/) data. This describes major physical features, not every local landform. The map is cached with the app for offline use (about 1.9 MB before compression). Coordinates are the fallback where coverage is sparse.
 - A shared link contains the day's blocks and their names, but not your location. Anyone with the link can read that schedule.
 
 **Moving from the old Vercel URL?** Open your saved day there, choose **Share this day**, and change only the hostname in the copied link to `dayshaper.burooj.dev`. Browser storage belongs to each domain, so it cannot move automatically.

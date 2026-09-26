@@ -150,6 +150,28 @@ await check("offline reload and shared-day URL use the cached generic shell", as
   assert.equal(await page.locator("#title").isVisible(), true);
 });
 
+await check("first offline location lookup and later travel use the installed map", async (page) => {
+  await page.goto(BASE);
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  await page.context().setOffline(true);
+  await page.evaluate(() => {
+    navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 43.653, longitude: -79.383 } });
+  });
+  await page.click("#menuBtn");
+  await page.click('[data-act="locate"]');
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent === "Near Lake Ontario");
+  await page.evaluate(() => {
+    navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 25, longitude: 0 } });
+  });
+  await page.click('[data-act="locate"]');
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent === "Sahara");
+  await page.evaluate(() => {
+    navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 0, longitude: -140 } });
+  });
+  await page.click('[data-act="locate"]');
+  assert.equal(await page.textContent("#whereLine"), "Your location");
+});
+
 await check("tap the dial to start shaping, Done to return", async (page) => {
   await page.goto(BASE + "?preview&at=10:00");
   const c = await pt(page, 0, 0);

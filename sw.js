@@ -3,7 +3,7 @@
 
 const VERSION = "dayshaper-v2.2.0";
 const SHELL = [
-  "./", "index.html", "manifest.webmanifest",
+  "./", "index.html", "manifest.webmanifest", "data/geography.json",
   "styles/tokens.css", "styles/app.css", "fonts/inter-var.woff2",
   "src/main.js", "src/install.js", "src/geography.js", "src/engine.js", "src/time.js", "src/solar.js", "src/color.js", "src/sky.js",
   "src/types.js", "src/context.js", "src/store.js", "src/icons.js", "src/scene.js", "src/dial.js",
