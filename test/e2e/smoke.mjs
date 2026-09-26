@@ -163,7 +163,7 @@ await check("returning location updates share one map download", async (page) =>
   });
   await page.goto(BASE + "?wx=clear&temp=18");
   await page.click("#menuBtn");
-  await page.waitForFunction(() => document.querySelector("#whereLine").textContent === "Sahara");
+  await page.waitForFunction(() => document.querySelector("#whereLine").textContent === "Sahara · 30 m above sea level");
   assert.equal(downloads, 1);
 });
 
