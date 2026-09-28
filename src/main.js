@@ -852,23 +852,23 @@ const nowTopBtn = $("nowTopBtn");
 const ORIENTATION_META = {
   noon: {
     icon: "clock",
-    label: "Noon on top · tap for sun orientation",
-    title: "Noon on top · tap for sun orientation",
+    label: "Noon on top · tap for now on top",
+    title: "Noon on top · tap for now on top",
     toast: "Noon on top",
     pressed: "false",
   },
-  sun: {
-    icon: "sun",
-    label: "Sun orientation · tap for now on top",
-    title: "Sun orientation (sunrise left, sunset right) · tap for now on top",
-    toast: "Sun orientation · sunrise left, sunset right",
-    pressed: "true",
-  },
   now: {
     icon: "top",
-    label: "Now on top · tap for noon on top",
-    title: "Now on top · tap for noon on top",
+    label: "Now on top · tap for sun orientation",
+    title: "Now on top · tap for sun orientation",
     toast: "Now on top",
+    pressed: "true",
+  },
+  sun: {
+    icon: "sun",
+    label: "Sun orientation · tap for noon on top",
+    title: "Sun orientation (sunrise left, sunset right) · tap for noon on top",
+    toast: "Sun orientation · sunrise left, sunset right",
     pressed: "true",
   },
 };

@@ -415,21 +415,13 @@ await check("a tap outside the ring, or on the sky, finishes shaping", async (pa
   assert.equal((await state(page)).mode, "shape", "gap on the ring keeps shaping");
 });
 
-await check("dial orientation toggle cycles noon, sun, and now", async (page) => {
+await check("dial orientation toggle cycles noon, now, and sun", async (page) => {
   await page.goto(BASE + "?preview&at=15:00");
   assert.equal(await page.$('[data-act="nowtop"]'), null, "gone from the menu");
   const btn = await page.$("#nowTopBtn");
   const [a, b] = [await btn.boundingBox(), await (await page.$("#shapeBtn")).boundingBox()];
   assert.ok(a.x > b.x + b.width && Math.abs(a.y + a.height / 2 - (b.y + b.height / 2)) < 4, "to the right, on the same line");
-  // click 1: sun orientation
-  await btn.click();
-  assert.equal(await page.evaluate(() => window.__dayshaper.orientation), "sun");
-  assert.equal(await page.evaluate(() => window.__dayshaper.nowOnTop), false);
-  await page.waitForTimeout(900);
-  const solarPins = await page.$$eval("#dial .solar-pin", (pins) => pins.map((p) => p.getBoundingClientRect().y));
-  assert.equal(solarPins.length, 2);
-  assert.ok(Math.abs(solarPins[0] - solarPins[1]) < 2, "sunrise and sunset are level in sun orientation");
-  // click 2: now on top
+  // click 1: now on top
   await btn.click();
   assert.equal(await page.evaluate(() => window.__dayshaper.orientation), "now");
   assert.equal(await page.evaluate(() => window.__dayshaper.nowOnTop), true);
@@ -438,6 +430,14 @@ await check("dial orientation toggle cycles noon, sun, and now", async (page) =>
   // the now bead has turned to the top of the dial
   const dot = await (await page.$("#dial .now-dot")).boundingBox(), dial = await (await page.$("#dial")).boundingBox();
   assert.ok(Math.abs(dot.x + dot.width / 2 - (dial.x + dial.width / 2)) < 6 && dot.y < dial.y + dial.height * 0.25, "now at the top");
+  // click 2: sun orientation
+  await btn.click();
+  assert.equal(await page.evaluate(() => window.__dayshaper.orientation), "sun");
+  assert.equal(await page.evaluate(() => window.__dayshaper.nowOnTop), false);
+  await page.waitForTimeout(900);
+  const solarPins = await page.$$eval("#dial .solar-pin", (pins) => pins.map((p) => p.getBoundingClientRect().y));
+  assert.equal(solarPins.length, 2);
+  assert.ok(Math.abs(solarPins[0] - solarPins[1]) < 2, "sunrise and sunset are level in sun orientation");
   // click 3: return to noon
   await btn.click();
   assert.equal(await page.evaluate(() => window.__dayshaper.orientation), "noon");
@@ -672,6 +672,9 @@ await check("sunrise and sunset sit on the dial and follow its rotation", async 
   await page.click("#nowTopBtn");
   await page.waitForTimeout(60);
   checkHours(await positions(), -10);
+  await page.click("#nowTopBtn");
+  await page.waitForTimeout(60);
+  checkHours(await positions(), 24 - 12.2);
   await openShape(page);
   assert.equal(await page.locator('.solar-marker[data-event="sunrise"]').isVisible(), true);
   assert.equal(await page.locator('.solar-marker[data-event="sunset"]').isVisible(), true);

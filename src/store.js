@@ -30,7 +30,7 @@ export function saveBlocks(blocks) {
   return write(K.blocks, blocks.map(({ id, type, start, len, name }) => (name ? { id, type, start, len, name } : { id, type, start, len })));
 }
 
-export const ORIENTATIONS = ["noon", "sun", "now"];
+export const ORIENTATIONS = ["noon", "now", "sun"];
 
 export const DEFAULT_PREFS = { hour12: null, orientation: "noon", nowOnTop: false, loc: null, shapedOnce: false };
 

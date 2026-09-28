@@ -8,6 +8,7 @@ const TAU = Math.PI * 2;
 test("rotFor computes dial rotation for noon, now, and sun orientations", () => {
   const sun = { sunrise: 6.2, sunset: 18.4, noon: 12.3, polar: null };
 
+  assert.deepEqual(ORIENTATIONS, ["noon", "now", "sun"]);
   assert.equal(rotFor("noon", 15, sun), 12, "noon orientation puts 12 on top");
   assert.equal(rotFor("now", 15, sun), -15, "now orientation puts current hour on top");
   assert.equal(rotFor("sun", 15, sun), 24 - 12.3, "sun orientation puts solar noon on top");
