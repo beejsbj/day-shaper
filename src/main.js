@@ -7,11 +7,11 @@ import {
 } from "./engine.js";
 import { TYPES, typeOf, sampleDay } from "./types.js";
 import { skyAt } from "./sky.js";
-import { sunForDate, guessLocation } from "./solar.js";
+import { sunForDate, guessLocation, rotFor } from "./solar.js";
 import { describe, readings, shapedSummary, geography, blockName } from "./context.js";
 import { matchGeography } from "./geography.js";
 import { hourOf, detectHour12, clockParts, fmtTime, fmtNow, fmtRange, fmtDur } from "./time.js";
-import { loadBlocks, saveBlocks, loadPrefs, savePrefs, createHistory, encodeDay, decodeDay, storageWorks, cleanName } from "./store.js";
+import { loadBlocks, saveBlocks, loadPrefs, savePrefs, createHistory, encodeDay, decodeDay, storageWorks, cleanName, ORIENTATIONS } from "./store.js";
 import { moonPhase } from "./moon.js";
 import { weatherView, weatherize, fetchWeather, weatherFromParam } from "./weather.js";
 import { installSprite, icon } from "./icons.js";
@@ -26,7 +26,11 @@ const PREVIEW = params.has("preview");
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
 /* ---------------- state ---------------- */
-const prefs = PREVIEW ? { hour12: null, nowOnTop: false, loc: null, shapedOnce: true } : loadPrefs();
+const prefs = PREVIEW ? { hour12: null, orientation: "noon", nowOnTop: false, loc: null, shapedOnce: true } : loadPrefs();
+if (PREVIEW && params.has("orientation") && ORIENTATIONS.includes(params.get("orientation"))) {
+  prefs.orientation = params.get("orientation");
+  prefs.nowOnTop = prefs.orientation === "now";
+}
 let blocks = PREVIEW ? (decodeDay(params.get("day")) || sampleDay(uid)) : loadBlocks();
 const history = createHistory();
 let hour12 = prefs.hour12 ?? detectHour12();
@@ -71,7 +75,7 @@ function refreshSun(date) {
   sun = PREVIEW ? { sunrise: 6.1, sunset: 18.35, noon: 12.2, polar: null } : sunForDate(date, loc);
 }
 refreshSun(clockDate());
-if (prefs.nowOnTop) rot = -hourOf(clockDate()); // open already turned; only a toggle animates
+rot = rotFor(prefs.orientation, hourOf(clockDate()), sun); // open already turned; only a toggle animates
 
 /* ---------------- weather (only where you really are) ---------------- */
 const WX_KEY = "dayshaper.weather.v1";
@@ -161,7 +165,6 @@ $("menuBtn").innerHTML = icon("more");
 $("doneBtn").innerHTML = icon("check") + "<span>Done</span>";
 $("shapeBtn").innerHTML = icon("up") + "<span>Shape your day</span>";
 $("stopPlay").innerHTML = icon("pause");
-$("nowTopBtn").innerHTML = icon("top");
 document.querySelectorAll("[data-i]").forEach((n) => { n.innerHTML = icon(n.dataset.i); });
 if (!prefs.shapedOnce) $("shapeBtn").classList.add("invite");
 
@@ -289,7 +292,7 @@ function frame(now) {
   const t = hourOf(date);
   refreshSun(date);
 
-  const rotGoal = prefs.nowOnTop ? -t : 12; // now on top, or noon on top
+  const rotGoal = rotFor(prefs.orientation, t, sun);
   const dr = wrapDelta(rotGoal - rot);
   if (Math.abs(dr) > 0.001) { rot += reduceMotion.matches || play ? dr : dr * Math.min(1, dt * 7); busy = busy || Math.abs(dr) > 0.01; }
   else rot = rotGoal;
@@ -844,19 +847,56 @@ function stopPlay() {
 }
 $("stopPlay").addEventListener("click", stopPlay);
 
-/* ---------------- now on top ---------------- */
+/* ---------------- dial orientation toggle ---------------- */
 const nowTopBtn = $("nowTopBtn");
-function syncNowTop() {
-  nowTopBtn.setAttribute("aria-pressed", String(prefs.nowOnTop));
-  nowTopBtn.title = prefs.nowOnTop ? "Now is on top · tap for noon on top" : "Turn the dial so now is on top";
-}
-nowTopBtn.addEventListener("click", () => {
-  prefs.nowOnTop = !prefs.nowOnTop;
+const ORIENTATION_META = {
+  noon: {
+    icon: "clock",
+    label: "Noon on top · tap for now on top",
+    title: "Noon on top · tap for now on top",
+    toast: "Noon on top",
+    pressed: "false",
+  },
+  now: {
+    icon: "top",
+    label: "Now on top · tap for sun orientation",
+    title: "Now on top · tap for sun orientation",
+    toast: "Now on top",
+    pressed: "true",
+  },
+  sun: {
+    icon: "sun",
+    label: "Sun orientation · tap for noon on top",
+    title: "Sun orientation (sunrise left, sunset right) · tap for noon on top",
+    toast: "Sun orientation · sunrise left, sunset right",
+    pressed: "true",
+  },
+};
+
+function setOrientation(next, { notify = true } = {}) {
+  if (!ORIENTATIONS.includes(next)) return;
+  prefs.orientation = next;
+  prefs.nowOnTop = next === "now";
   persistPrefs();
   syncNowTop();
   haptic(8);
-  toast(prefs.nowOnTop ? "Now on top" : "Noon on top", false);
+  if (notify) toast(ORIENTATION_META[next].toast, false);
   request();
+}
+
+function syncNowTop() {
+  const meta = ORIENTATION_META[prefs.orientation] || ORIENTATION_META.noon;
+  nowTopBtn.setAttribute("data-orientation", prefs.orientation);
+  nowTopBtn.setAttribute("aria-pressed", meta.pressed);
+  nowTopBtn.setAttribute("aria-label", meta.label);
+  nowTopBtn.title = meta.title;
+  nowTopBtn.innerHTML = icon(meta.icon);
+}
+
+nowTopBtn.addEventListener("click", () => {
+  const idx = ORIENTATIONS.indexOf(prefs.orientation);
+  const next = ORIENTATIONS[(idx + 1) % ORIENTATIONS.length];
+  setOrientation(next);
 });
 syncNowTop();
 
@@ -1045,5 +1085,7 @@ if ("serviceWorker" in navigator && !PREVIEW && (location.protocol === "https:" 
 // test hook: lets the e2e suite read state without poking at internals
 Object.defineProperty(window, "__dayshaper", { value: {
   get blocks() { return blocks; }, get mode() { return mode; }, get selectedId() { return selectedId; },
-  get nowOnTop() { return prefs.nowOnTop; }, get weather() { return wx; },
+  get nowOnTop() { return prefs.orientation === "now"; }, get weather() { return wx; },
+  get orientation() { return prefs.orientation; },
+  setOrientation(o, opts) { setOrientation(o, opts); },
 } });

@@ -2,3 +2,4 @@
 scrapped-variants.tar.gz
 node_modules/
 .env*
+.vercel

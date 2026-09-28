@@ -83,3 +83,10 @@ export function sunForDate(date, loc) {
     loc.lat, loc.lon, -date.getTimezoneOffset() / 60,
   );
 }
+
+/** Dial rotation in hours so noon, the sun, or now sits at the top. */
+export function rotFor(orientation, t, sun) {
+  if (orientation === "now") return -t;
+  if (orientation === "sun") return sun ? 24 - (sun.noon ?? 12) : 12;
+  return 12; // noon on top
+}

@@ -30,24 +30,35 @@ export function saveBlocks(blocks) {
   return write(K.blocks, blocks.map(({ id, type, start, len, name }) => (name ? { id, type, start, len, name } : { id, type, start, len })));
 }
 
-const DEFAULT_PREFS = { hour12: null, nowOnTop: false, loc: null, shapedOnce: false };
+export const ORIENTATIONS = ["noon", "now", "sun"];
+
+export const DEFAULT_PREFS = { hour12: null, orientation: "noon", nowOnTop: false, loc: null, shapedOnce: false };
 
 export function loadPrefs() {
   const p = read(K.prefs);
   const prefs = { ...DEFAULT_PREFS };
   if (p && typeof p === "object") {
     if (typeof p.hour12 === "boolean") prefs.hour12 = p.hour12;
-    if (typeof p.nowOnTop === "boolean") prefs.nowOnTop = p.nowOnTop;
+    if (ORIENTATIONS.includes(p.orientation)) {
+      prefs.orientation = p.orientation;
+    } else if (typeof p.nowOnTop === "boolean") {
+      prefs.orientation = p.nowOnTop ? "now" : "noon";
+    }
     if (typeof p.shapedOnce === "boolean") prefs.shapedOnce = p.shapedOnce;
     const lat = Number(p.loc?.lat), lon = Number(p.loc?.lon);
     if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) prefs.loc = { lat, lon };
   } else if (read(K.legacyNowTop) === true) {
-    prefs.nowOnTop = true;
+    prefs.orientation = "now";
   }
+  prefs.nowOnTop = prefs.orientation === "now";
   return prefs;
 }
 
-export const savePrefs = (prefs) => write(K.prefs, prefs);
+export const savePrefs = (prefs) => {
+  const out = { ...prefs };
+  out.nowOnTop = out.orientation === "now";
+  return write(K.prefs, out);
+};
 
 /** Undo history of whole-day snapshots. */
 export function createHistory(limit = 60) {
