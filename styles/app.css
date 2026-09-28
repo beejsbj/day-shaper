@@ -189,6 +189,8 @@ html.dark #dial .now-pulse { stroke: #fff; }
 #nowTopBtn { color: var(--ink-low); transition: transform var(--t-touch) var(--spring), background 0.3s, color 0.3s; }
 #nowTopBtn .i { transition: transform 0.5s var(--spring); }
 #nowTopBtn[aria-pressed="true"] { background: var(--pill-strong); color: var(--ink); }
+#nowTopBtn[data-orientation="sun"] { background: var(--pill-strong); color: var(--sun); }
+#nowTopBtn[data-orientation="now"] { background: var(--pill-strong); color: var(--ink); }
 #nowTopBtn[aria-pressed="true"] .i { transform: rotate(360deg); }
 #nowTopBtn:active .i { transform: scale(0.85); }
 #shapeBtn.invite { animation: invite 2.8s ease-in-out 1.2s 3; }
